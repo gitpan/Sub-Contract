@@ -1,0 +1,26 @@
+Changes
+lib/Sub/Contract.pm
+lib/Sub/Contract/ArgumentChecks.pm
+lib/Sub/Contract/Compiler.pm
+lib/Sub/Contract/Memoizer.pm
+lib/Sub/Contract/Pool.pm
+lib/Sub/Contract/Debug.pm
+Makefile.PL
+MANIFEST
+README
+t/01_test_compile.t
+t/02_test_basic_contract.t
+t/03_test_invariant.t
+t/04_test_pre_post_conditions.t
+t/05_test_def_and_and_undef_or.t
+t/06_test_context.t
+t/07_test_error_messages.t
+t/08_test_in_out_arguments_validation.t
+t/10_test_in.t
+t/11_test_out.t
+t/12_test_pool.t
+t/15_test_complex_contracts.t
+t/check_requirements.pm
+t/pod-coverage.t
+t/pod.t
+META.yml                                 Module meta-data (added by MakeMaker)
