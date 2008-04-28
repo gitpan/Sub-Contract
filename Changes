@@ -5,3 +5,8 @@ Revision history for Perl extension Sub::Contract
 
 0.01  2008-04-25
         - releasing alfa version
+
+0.02  2008-04-28
+        - replace Hook::WrapSub with builtin equivalent to enable memoizing later on
+        - more tests
+        - added benchmarking

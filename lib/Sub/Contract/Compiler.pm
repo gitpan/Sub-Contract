@@ -1,14 +1,14 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.6 2008/04/25 14:01:52 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.7 2008/04/28 15:47:50 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
 
 use strict;
 use warnings;
-use Carp qw(croak);
+use Carp qw(croak confess);
 use Data::Dumper;
 use Sub::Contract::Debug qw(debug);
 use Hook::WrapSub qw(wrap_subs unwrap_subs);
@@ -26,28 +26,62 @@ sub enable {
     $self->disable if ($self->{is_enabled});
 
     # compile code to validate pre and post constraints
-    my $pre  = _compile('before',
-			$self->contractor,
-			$self->{in},
-			$self->{pre},
-			$self->{invariant},
-			);
+    my $cref_pre  = _compile('before',
+			     $self->contractor,
+			     $self->{in},
+			     $self->{pre},
+			     $self->{invariant},
+			     );
 
-    my $post = _compile('after',
-			$self->contractor,
-			$self->{out},
-			$self->{post},
-			$self->{invariant},
-			);
+    my $cref_post = _compile('after',
+			     $self->contractor,
+			     $self->{out},
+			     $self->{post},
+			     $self->{invariant},
+			     );
+
+    # find contractor's code ref
+    my $cref = $self->contractor_cref;
 
     # wrap validation code around contracted sub
-    my @args = ($self->contractor);
-    unshift @args, $pre if ($pre);
-    push @args, $post if ($post);
+    my $contract = sub {
+	# TODO: this code is not re-entrant. use local variables for args/wantarray/results. is local enough?
 
-    wrap_subs(@args);
 
-    # TODO: enable memoization
+	local @Sub::Contract::args = @_;
+	local $Sub::Contract::wantarray = wantarray;
+	local @Sub::Contract::results = ();
+
+	if (!defined $Sub::Contract::wantarray) {
+	    # void context
+	    &$cref_pre() if ($cref_pre);
+	    &$cref(@Sub::Contract::args);
+	    @Sub::Contract::results = ();
+	    &$cref_post(@Sub::Contract::results) if ($cref_post);
+	    return ();
+
+	} elsif ($Sub::Contract::wantarray) {
+	    # array context
+	    &$cref_pre() if ($cref_pre);
+	    @Sub::Contract::results = &$cref(@Sub::Contract::args);
+	    &$cref_post() if ($cref_post);
+	    return @Sub::Contract::results;
+
+	} else {
+	    # scalar context
+	    &$cref_pre() if ($cref_pre);
+	    my $s = &$cref(@Sub::Contract::args);
+	    @Sub::Contract::results = ($s);
+	    &$cref_post() if ($cref_post);
+	    return $s;
+	}
+    };
+
+    # replace contractor with contract sub
+    $^W = 0;
+    no strict 'refs';
+    no warnings;
+    *{ $self->contractor } = $contract;
 
     $self->{is_enabled} = 1;
 
@@ -60,7 +94,10 @@ sub disable {
 	debug(1,"Sub::Contract: disabling contract on [".$self->contractor."]");
 
 	# restore original sub
-	unwrap_subs $self->contractor;
+	$^W = 0;
+	no strict 'refs';
+	no warnings;
+	*{ $self->contractor } = $self->{contractor_cref};
 
 	# TODO: remove memoization
 	$self->{is_enabled} = 0;
@@ -79,8 +116,7 @@ sub is_enabled {
 #              or after a call to the contractor function
 #
 
-# TODO: split into _compile_code and _generate_code
-
+# TODO: insert _croak inline in compiled code
 # croak from contract code, with proper stack level
 sub _croak {
     my $msg = shift;
@@ -88,6 +124,7 @@ sub _croak {
     croak "$msg";
 }
 
+# TODO: insert _run inline in compiled code
 # run a condition, with proper stack level if croak
 sub _run {
     my ($func,@args) = @_;
@@ -98,8 +135,8 @@ sub _run {
 }
 
 # The strategy we use for building the contract validation sub is to
-# to (quite horribly) build a string containing the code of the validation
-# sub, then compiling this code with eval. We could instead use a closure,
+# to (quite horribly) build a string containing the code of the validation sub,
+# then compiling this code with eval. We could instead use a closure,
 # but that would mean that many things we can test at compile time would
 # end up being tested each time the closure is called which would be a
 # waste of cpu.
@@ -112,19 +149,6 @@ sub _compile {
 
     # the code validating the pre or post-call part of the contract, as a string
     my $str_code = "";
-
-    # if we are before the function call, keep track of the input arguments
-    if ($state eq 'before') {
-	$str_code .= q{
-	    @Sub::Contract::args = @_;
-	    $Sub::Contract::wantarray = $Hook::WrapSub::caller[5];
-	    @Sub::Contract::results = ();
-	};
-    } else {
-	$str_code .= q{
-	    @Sub::Contract::results = @Hook::WrapSub::result;
-	};
-    }
 
     # code validating the contract invariant
     if (defined $check_invariant) {
@@ -139,7 +163,7 @@ sub _compile {
     if (defined $check_condition) {
 	if ($state eq 'before') {
 	    $str_code .= sprintf q{
-		if (!_run($check_condition,@_)) {
+		if (!_run($check_condition,@Sub::Contract::args)) {
 		    _croak "pre-condition fails before calling subroutine [%s]";
 		}
 	    }, $contractor;
@@ -162,7 +186,7 @@ sub _compile {
 
 	# get args/@_ from right source
 	if ($state eq 'before') {
-	    $str_code .= q{ my @args = @_; };
+	    $str_code .= q{ my @args = @Sub::Contract::args; };
 	} else {
 	    $str_code .= q{ my @args = @Sub::Contract::results; };
 	}
@@ -237,11 +261,6 @@ sub _compile {
 	}
     }
 
-
-
-    # croak should look like coming from the real caller package, skip some stack frames!
-
-
 # TODO: skip compiling after part if not needed
 
    return undef if ($str_code eq "");
@@ -264,6 +283,10 @@ sub _compile {
 
     my $cref;
     eval $str_code;
+
+    if (defined $@ and $@ ne "") {
+	confess "BUG: failed to compile contract ($@)";
+    }
 
     return $cref;
 }
@@ -314,7 +337,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.6 2008/04/25 14:01:52 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.7 2008/04/28 15:47:50 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

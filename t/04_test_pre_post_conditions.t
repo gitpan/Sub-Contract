@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 04_test_pre_post_conditions.t,v 1.5 2008/04/25 13:14:37 erwan_lemonnier Exp $
+#   $Id: 04_test_pre_post_conditions.t,v 1.6 2008/04/28 15:43:32 erwan_lemonnier Exp $
 #
 
 package main;
@@ -15,7 +15,7 @@ use Carp qw(croak);
 BEGIN {
 
     use check_requirements;
-    plan tests => 13;
+    plan tests => 15;
 
     use_ok("Sub::Contract",'contract');
 };
@@ -36,7 +36,8 @@ sub foo {
 eval { $c = contract('foo')
 	   ->pre(
 		  sub {
-		      croak "dying now" if ($_[0] eq 'please die');
+		      print "got args: ".Dumper(\@_);
+			  croak "dying now" if ($_[0] eq 'please die');
 		      return $_[0] eq 'bob';
 		  }
 		 )
@@ -48,10 +49,10 @@ eval { foo('bob'); };
 ok(!defined $@ || $@ eq "", "pre condition passes");
 
 eval { foo('bilou') };
-ok( $@ =~ /pre-condition fails before calling subroutine \[main::foo\] at .*04_test_pre_post_conditions.t line 50/, "pre condition fails");
+ok( $@ =~ /pre-condition fails before calling subroutine \[main::foo\] at .*04_test_pre_post_conditions.t line 51/, "pre condition fails ($@)");
 
 eval { foo('please die') };
-ok( $@ =~ /dying now at .*04_test_pre_post_conditions.t line 53/, "pre condition croaks");
+ok( $@ =~ /dying now at .*04_test_pre_post_conditions.t line 54/, "pre condition croaks");
 
 # test post condition
 eval {
@@ -73,14 +74,16 @@ my @res;
 eval { @res = foo('bilou'); };
 ok(!defined $@ || $@ eq "", "pre condition now disabled and post condition ok");
 is_deeply(\@res,[1,2,3], "foo returned [1,2,3]");
-is_deeply(\@Sub::Contract::results,[1,2,3], "\@Sub::Contract::results is [1,2,3]");
+is_deeply(\@Sub::Contract::results,[], "\@Sub::Contract::results is empty");
+is_deeply(\@Sub::Contract::args,[], "\@Sub::Contract::args is empty");
+is($Sub::Contract::wantarray,undef, "\$Sub::Contract::wantarray is undef");
 
 @result = (4,5,6);
 eval { @res = foo('bilou'); };
-ok($@ =~ /post-condition fails after calling subroutine \[main::foo\] at .*04_test_pre_post_conditions.t line 79/, "post condition failed");
+ok($@ =~ /post-condition fails after calling subroutine \[main::foo\] at .*04_test_pre_post_conditions.t line 82/, "post condition failed");
 
 my $res;
 @result = (1,2);
 eval { $res = foo('asldkfjbilou'); };
-ok($@ =~ /foo called in wrong context at .*04_test_pre_post_conditions.t line 84/, "post condition croaks");
+ok($@ =~ /foo called in wrong context at .*04_test_pre_post_conditions.t line 87/, "post condition croaks");
 

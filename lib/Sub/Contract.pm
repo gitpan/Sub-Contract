@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.12 2008/04/25 15:55:12 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.14 2008/04/28 15:50:54 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -27,7 +27,7 @@ our @EXPORT_OK = qw( contract
 		     defined_and
 		     );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -91,23 +91,35 @@ sub defined_and {
 #
 
 sub new {
-    my ($class,$contractor,%args) = @_;
+    my ($class,$fullname,%args) = @_;
     $class = ref $class || $class;
     my $caller = delete $args{caller} || caller();
 
-    croak "new() expects a subroutine name as first argument" if (!defined $contractor);
+    croak "new() expects a subroutine name as first argument" if (!defined $fullname);
     croak "new() got unknown arguments: ".Dumper(%args) if (keys %args != 0);
 
-    if ($contractor !~ /::/) {
-	$contractor = qualify($contractor,$caller);
+    # TODO: test for contractor existence here
+    my $contractor_cref;
+    my $contractor;
+
+    if ($fullname !~ /::/) {
+	$contractor_cref = *{ qualify_to_ref($fullname,$caller) }{CODE};
+	$contractor = qualify($fullname,$caller);
+    } else {
+	$contractor_cref = *{ qualify_to_ref($fullname) }{CODE};
+	$contractor = qualify($fullname);
     }
 
-    # TODO: die if contractor does not exist? or let the compiler do that? or let Hook::WrapSub do that?
+    if (!defined $contractor_cref) {
+	croak "Can't find subroutine named '".$contractor."'";
+    }
 
+    # create instance of contract
     my $self = bless({}, $class);
-    $self->{is_enabled}  = 0;           # 1 if contract is enabled
-    $self->{is_memoized} = 0;           # TODO: needed?
-    $self->{contractor}  = $contractor; # The fully qualified name of the contracted subroutine
+    $self->{is_enabled}      = 0;                  # 1 if contract is enabled
+    $self->{is_memoized}     = 0;                  # TODO: needed?
+    $self->{contractor}      = $contractor;        # The fully qualified name of the contracted subroutine
+    $self->{contractor_cref} = $contractor_cref;   # A code reference to the contracted subroutine
 
     $self->reset;
 
@@ -252,6 +264,15 @@ sub invariant {
 
 sub contractor {
     return $_[0]->{contractor};
+}
+
+#---------------------------------------------------------------
+#
+#   contractor_cref - return a code ref to the contractor subroutine
+#
+
+sub contractor_cref {
+    return $_[0]->{contractor_cref};
 }
 
 
@@ -625,11 +646,15 @@ from around the contractor.
 
 =item C<< $contract->is_enabled >>
 
-Returns true if this contract is currently enabled.
+Return true if this contract is currently enabled.
 
 =item C<< $contract->contractor >>
 
-Returns the fully qualified name name of the subroutine affected by this contract.
+Return the fully qualified name name of the subroutine affected by this contract.
+
+=item C<< $contract->contractor_cref >>
+
+Return a code reference to the contracted subroutine.
 
 =item C<< $contract->reset >>
 
@@ -702,7 +727,7 @@ Example:
 
 The value of the following variables is set by Sub::Contract before
 executing any contract validation code. They are designed to be used
-inside the contract validation code.
+inside the contract validation code and nowhere else!
 
 =over 4
 
@@ -754,7 +779,7 @@ See 'Issues with contract programming' under 'Discussion'.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.12 2008/04/25 15:55:12 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.14 2008/04/28 15:50:54 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 

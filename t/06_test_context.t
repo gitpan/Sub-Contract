@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 06_test_context.t,v 1.3 2008/04/25 13:52:07 erwan_lemonnier Exp $
+#   $Id: 06_test_context.t,v 1.4 2008/04/28 15:43:32 erwan_lemonnier Exp $
 #
 
 package main;
@@ -86,7 +86,7 @@ my $c = contract('foo')
 
 # scalar context with contract and no memoization
 {
-    $pre_wantarray = $post_wantarray = 0;
+    $pre_wantarray = $post_wantarray = '';
     @pre_args = @post_args = ();
     @pre_result = ();
     @post_result = ('scalar context');
@@ -96,7 +96,7 @@ my $c = contract('foo')
 }
 
 {
-    $pre_wantarray = $post_wantarray = 0;
+    $pre_wantarray = $post_wantarray = '';
     @pre_args = @post_args = (34);
     @pre_result = ();
     @post_result = ('scalar context');
@@ -160,7 +160,7 @@ $c->memoize->enable;
 
 # scalar context with contract and memoization
 {
-    $pre_wantarray = $post_wantarray = 0;
+    $pre_wantarray = $post_wantarray = '';
     @pre_args = @post_args = ();
     @pre_result = ();
     @post_result = ('scalar context');
@@ -172,7 +172,7 @@ $c->memoize->enable;
 }
 
 {
-    $pre_wantarray = $post_wantarray = 0;
+    $pre_wantarray = $post_wantarray = '';
     @pre_args = @post_args = (34);
     @pre_result = ();
     @post_result = ('scalar context');
