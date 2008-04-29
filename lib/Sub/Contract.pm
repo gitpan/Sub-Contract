@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.14 2008/04/28 15:50:54 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.16 2008/04/29 12:24:26 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -27,7 +27,7 @@ our @EXPORT_OK = qw( contract
 		     defined_and
 		     );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -394,7 +394,14 @@ stating that they must be defined and be integers or else we croak. That
 kind of tests is usually writen explicitely within the subroutine's
 body, hence leading to an overflow of argument validation code. With Sub::Contract
 you can move this code outside the subroutine body in a relatively simple
-and elegant way.
+and elegant way. The code for C<add> and its contract could look like:
+
+    contract('add')
+        ->in(\&is_integer,\&is_integer)
+        ->out(\&is_integer)
+        ->enable;
+
+    sub add { return $_[0]+$_[1] }
 
 Sub::Contract doesn't aim at implementing all the properties of contract
 programming, but focuses on some that have proven handy in practice
@@ -439,14 +446,14 @@ To make things easier to describe, let's agree on the meaning of the following t
 
 =over 4
 
-=item Contractor The contractor is a subroutine whose pre- and post-call
+=item Contractor: The contractor is a subroutine whose pre- and post-call
 state and input and return arguments are verified against constraints
 defined in a contract.
 
-=item Contract Defines a set of constraints that a contractor has to conform with
+=item Contract: Defines a set of constraints that a contractor has to conform with
 and eventually memoizes the contractor's results.
 
-=item Constraint A test that returns true when the constraint passes, or either
+=item Constraint: A test that returns true when the constraint passes, or either
 returns false or croaks (dies) when the constraint fails.
 Constraints are specified inside the contract as code references to some test
 code.
@@ -476,12 +483,25 @@ emit an error looking as if the contractor croaked.
 In Perl, contractors are always called in a given context. It can be either scalar
 context, array context or no context (no return value expected).
 
-How this affects a contractor's contract is rather tricky. For example,
-if a function that always returns an array is called in scalar context, should
-we consider it a contract breach?
+How this affects a contractor's contract is rather tricky. The contractor's return
+values may be context sensitive. Therefore, the following choices were made when
+designing Sub::Contract:
 
-TODO: For technical reasons, constraints defined with the C<out()> methods
-are context sensitive. If the constraints apply to an array of values...
+=over 4
+
+=item * If a subroutine usually returns a scalar or an array but is called
+in void context, the part of the contract that validates return values
+will not see any return values from the subroutine. This implies that calling
+in void context a subroutine whose contract has constraints on the return values
+will be seen as a contract breach.
+
+=item * If a subroutine returns an array but is called in scalar context, the
+part of the contract that validates return values will see only 1 return value
+from this subroutine: an integer telling the number of elements in the returned
+array.  This implies that calling in scalar context a subroutine whose contract
+has constraints on a list of return values will be seen as a contract breach.
+
+=back
 
 =head2 Issues with contract programming
 
@@ -570,7 +590,9 @@ located in package C<$package>.
 =item C<< $contract->invariant($coderef) >>
 
 Execute C<$coderef> both before and after calling the contractor.
-C<$coderef> gets in arguments the arguments passed to the contractor.
+
+C<$coderef> gets in arguments the arguments passed to the contractor,
+both when called before and after calling the contractor.
 C<$coderef> should return 1 if the condition passes and 0 if it fails.
 C<$coderef> may croak, in which case the error will look as if caused
 by the calling code. Do not C<die> from C<$coderef>, always use C<croak>
@@ -585,7 +607,7 @@ instead.
     # before and after calling ->perimeter()
 
     contract('perimeter')
-        ->invariant(sub { croak "pi has changed" if ($_[0]->x != 3.14) })
+        ->invariant(sub { croak "pi has changed" if ($_[0]->pi != 3.14) })
         ->enable;
 
     sub perimeter { ... }
@@ -595,10 +617,25 @@ instead.
 Same as C<invariant> but executes C<$coderef> only before calling the
 contractor.
 
+C<$coderef> gets in arguments the arguments passed to the contractor.
+C<$coderef> should return 1 if the condition passes and 0 if it fails.
+C<$coderef> may croak, in which case the error will look as if caused
+by the calling code. Do not C<die> from C<$coderef>, always use C<croak>
+instead.
+
 =item C<< $contract->post($coderef) >>
 
-Same as C<pre> but executes C<$coderef> when returning from calling
+Similaar to C<pre> but executes C<$coderef> when returning from calling
 the contractor.
+
+C<$coderef> gets in arguments the return values from the contractor,
+eventually altered by the context (meaning C<()> if called in void
+context, a scalar if called in scalar context and a list if called
+in array context).
+C<$coderef> should return 1 if the condition passes and 0 if it fails.
+C<$coderef> may croak, in which case the error will look as if caused
+by the calling code. Do not C<die> from C<$coderef>, always use C<croak>
+instead.
 
 =item C<< $contract->in(@checks) >>
 
@@ -606,19 +643,86 @@ Validate each input argument of the contractor one by one.
 
 C<@checks> declares which validation functions should be called
 for each input argument. The syntax of C<@checks> supports arguments
-passed in array-style or hash-style or a mix of both.
+passed in array-style, hash-style or a mix of both.
 
+If the contractor expects a list of say 3 arguments, its contract's
+C<in> should look like:
 
-TODO: syntax for @checks
+    contract('contractor')
+        ->in(\&check_arg0, \&check_arg1, \&check_arg2)
+
+Where C<check_argX> is a code reference to a subroutine that
+takes the corresponding argument as input value and returns
+true if the argument is ok, and either returns false or croaks
+if the argument is not ok.
+
+If some arguments need not to be checked, just replace the code
+ref of their corresponding constraint with C<undef>:
+
+    # check input argument 0 and 2, but not the middle one
+    contract('contractor')
+        ->in(\&check_arg0, undef, \&check_arg2)
+
+This comes in handy when contracting an object method where
+the first passed argument is the object itself and need not
+being checked:
+
+    # method perimeter on obect MyCircle expects no
+    # arguments, but method color expects a color code
+    contract('perimeter')->in(undef)->enable;
+
+    contract('color')
+        ->in(undef, sub { return defined $_[0] && ref $_[0] eq 'MyCircle::ColorCode'})
+        ->enable;
+
+You can also constraint arguments passed in hash-style, and it look like
+this:
+
+    # function add expects a hash with 2 keys 'a' and 'b'
+    # having values that are integers
+    contract('add')
+        ->in(a => \&is_integer, b => \&is_integer)
+        ->enable;
+
+If C<add> was a method on an object, C<in()> would look like:
+
+    contract('add')
+        ->in(undef, a => \&is_integer, b => \&is_integer)
+        ->enable;
+
+Finally, you can mix list- and hash-style argument passing.
+Say that C<add()> expects first 2 arguments then a hash of
+2 keys with 2 values, and all must be integers:
+
+    contract('add')
+        ->in(\&is_integer,
+             \&is_integer,
+             a => \&is_integer,
+             b => \&is_integer)
+        ->enable;
+
+Most of the constraints on arguments will in fact act like type
+constraints and be the same all across your contracts. Instead
+of declaring again and again the same anonymous sub in every
+contract, create a function that tests this specific type, such
+as C<is_integer>. Give those functions names
+that show which types they test, such as C<is_integer>, C<is_string>,
+C<is_date>, C<is_arrayref> and so on. It is also a good idea
+to gather all those functions in one specific module to import
+together with C<Sub::Contract>.
+
+If you don't want to check whether the argument is defined or not
+in every constraint, you may want to use C<defined_and> and
+C<undef_or> (see further down).
 
 =item C<< $contract->out(@checks) >>
 
 Same as C<in> but for validating return arguments one by one.
 
 C<out()> validates return values in a context sensitive way. See
-'Contract and context' under 'Discussion' for details. If this
-restriction disturbs you, you may want to implement your constraints
-with C<post()> rather than C<out()>.
+'Contract and context' under 'Discussion' for details.
+
+The syntax of C<@checks> is the same as for C<in()>.
 
 =item C<< $contract->memoize >>
 
@@ -779,7 +883,7 @@ See 'Issues with contract programming' under 'Discussion'.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.14 2008/04/28 15:50:54 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.16 2008/04/29 12:24:26 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 

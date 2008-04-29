@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.7 2008/04/28 15:47:50 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.9 2008/04/29 12:24:26 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
@@ -25,57 +25,123 @@ sub enable {
 
     $self->disable if ($self->{is_enabled});
 
-    # compile code to validate pre and post constraints
-    my $cref_pre  = _compile('before',
-			     $self->contractor,
-			     $self->{in},
-			     $self->{pre},
-			     $self->{invariant},
-			     );
+    # list all variables with same names in enable() as in _generate_code()
+    my $contractor    = $self->contractor;
+    my $validator_in  = $self->{in};
+    my $validator_out = $self->{out};
+    my $check_in      = $self->{pre};
+    my $check_out     = $self->{post};
+    my $invariant     = $self->{invariant};
 
-    my $cref_post = _compile('after',
-			     $self->contractor,
-			     $self->{out},
-			     $self->{post},
-			     $self->{invariant},
-			     );
+    my @list_checks_in;
+    my %hash_checks_in;
+    if (defined $validator_in) {
+	@list_checks_in = @{$validator_in->list_checks};
+	%hash_checks_in = %{$validator_in->hash_checks};
+    }
+
+    my @list_checks_out;
+    my %hash_checks_out;
+    if (defined $validator_out) {
+	@list_checks_out = @{$validator_out->list_checks};
+	%hash_checks_out = %{$validator_out->hash_checks};
+    }
+
+    # compile code to validate pre and post constraints
+    my $code_pre  = _generate_code('before',
+				   $contractor,
+				   $validator_in,
+				   $check_in,
+				   $invariant,
+				   # a mapping to local variable names
+				   {
+				       contractor => "contractor",
+				       validator  => "validator_in",
+				       check      => "check_in",
+				       invariant  => "invariant",
+				       list_check => "list_checks_in",
+				       hash_check => "hash_checks_in",
+				   },
+				   );
+
+    my $code_post = _generate_code('after',
+				   $contractor,
+				   $validator_out,
+				   $check_out,
+				   $invariant,
+				   # a mapping to local variable names
+				   {
+				       contractor => "contractor",
+				       validator  => "validator_out",
+				       check      => "check_out",
+				       invariant  => "invariant",
+				       list_check => "list_checks_out",
+				       hash_check => "hash_checks_out",
+				   },
+				   );
 
     # find contractor's code ref
     my $cref = $self->contractor_cref;
 
     # wrap validation code around contracted sub
-    my $contract = sub {
-	# TODO: this code is not re-entrant. use local variables for args/wantarray/results. is local enough?
+    my $str_contract = sprintf q{
+	use Carp;
 
+	my $cref_pre = sub {
+	    %s
+	};
+	my $cref_post = sub {
+	    %s
+	};
 
-	local @Sub::Contract::args = @_;
-	local $Sub::Contract::wantarray = wantarray;
-	local @Sub::Contract::results = ();
+	$contract = sub {
+	    # TODO: this code is not re-entrant. use local variables for args/wantarray/results. is local enough?
 
-	if (!defined $Sub::Contract::wantarray) {
-	    # void context
-	    &$cref_pre() if ($cref_pre);
-	    &$cref(@Sub::Contract::args);
-	    @Sub::Contract::results = ();
-	    &$cref_post(@Sub::Contract::results) if ($cref_post);
-	    return ();
+	    local @Sub::Contract::args = @_;
+	    local $Sub::Contract::wantarray = wantarray;
+	    local @Sub::Contract::results = ();
 
-	} elsif ($Sub::Contract::wantarray) {
-	    # array context
-	    &$cref_pre() if ($cref_pre);
-	    @Sub::Contract::results = &$cref(@Sub::Contract::args);
-	    &$cref_post() if ($cref_post);
-	    return @Sub::Contract::results;
+	    if (!defined $Sub::Contract::wantarray) {
+		# void context
+		&$cref_pre() if ($cref_pre);
+		&$cref(@Sub::Contract::args);
+		@Sub::Contract::results = ();
+		&$cref_post(@Sub::Contract::results) if ($cref_post);
+		return ();
 
-	} else {
-	    # scalar context
-	    &$cref_pre() if ($cref_pre);
-	    my $s = &$cref(@Sub::Contract::args);
-	    @Sub::Contract::results = ($s);
-	    &$cref_post() if ($cref_post);
-	    return $s;
+	    } elsif ($Sub::Contract::wantarray) {
+		# array context
+		&$cref_pre() if ($cref_pre);
+		@Sub::Contract::results = &$cref(@Sub::Contract::args);
+		&$cref_post() if ($cref_post);
+		return @Sub::Contract::results;
+
+	    } else {
+		# scalar context
+		&$cref_pre() if ($cref_pre);
+		my $s = &$cref(@Sub::Contract::args);
+		@Sub::Contract::results = ($s);
+		&$cref_post() if ($cref_post);
+		return $s;
+	    }
 	}
-    };
+    }, $code_pre, $code_post;
+
+    # compile code
+    $str_contract =~ s/^\s+//gm;
+
+    debug(2,join("\n",
+		 "Sub::Contract: wrapping this code around [".$self->contractor."]:",
+		 "-------------------------------------------------------",
+		 $str_contract,
+		 "-------------------------------------------------------"));
+
+    my $contract;
+    eval $str_contract;
+
+    if (defined $@ and $@ ne "") {
+	confess "BUG: failed to compile contract ($@)";
+    }
 
     # replace contractor with contract sub
     $^W = 0;
@@ -141,8 +207,8 @@ sub _run {
 # end up being tested each time the closure is called which would be a
 # waste of cpu.
 
-sub _compile {
-    my ($state,$contractor,$validator,$check_condition,$check_invariant) = @_;
+sub _generate_code {
+    my ($state,$contractor,$validator,$check_condition,$check_invariant,$varnames) = @_;
     my (@list_checks,%hash_checks);
 
     croak "BUG: wrong state" if ($state !~ /^before|after$/);
@@ -153,28 +219,28 @@ sub _compile {
     # code validating the contract invariant
     if (defined $check_invariant) {
 	$str_code .= sprintf q{
-	    if (!_run($check_invariant,@Sub::Contract::args)) {
-		_croak "invariant fails %s calling subroutine [%s]";
+	    if (!_run($%s,@Sub::Contract::args)) {
+		_croak "invariant fails %s calling subroutine [$%s]";
 	    }
-	}, $state, $contractor;
+	}, $varnames->{invariant}, $state, $varnames->{contractor};
     }
 
     # code validating the contract pre/post condition
     if (defined $check_condition) {
 	if ($state eq 'before') {
 	    $str_code .= sprintf q{
-		if (!_run($check_condition,@Sub::Contract::args)) {
-		    _croak "pre-condition fails before calling subroutine [%s]";
+		if (!_run($%s,@Sub::Contract::args)) {
+		    _croak "pre-condition fails before calling subroutine [$%s]";
 		}
-	    }, $contractor;
+	    }, $varnames->{check}, $varnames->{contractor};
 	} else {
-	    # if the contractor is called without context, Hook::WrapSub discards the result
+	    # if the contractor is called without context, the result is set to ()
 	    # so we can't validate the returned arguments. maybe we should issue a warning?
 	    $str_code .= sprintf q{
-		if (!_run($check_condition,@Sub::Contract::results)) {
-		    _croak "post-condition fails after calling subroutine [%s]";
+		if (!_run($%s,@Sub::Contract::results)) {
+		    _croak "post-condition fails after calling subroutine [$%s]";
 		}
-	    }, $contractor;
+	    }, $varnames->{check}, $varnames->{contractor};
 	}
     }
 
@@ -199,12 +265,12 @@ sub _compile {
 	    for (my $i=0; $i<scalar(@list_checks); $i++) {
 		if (defined $list_checks[$i]) {
 		    $str_code .= sprintf q{
-			_croak "%s argument %s of [%s] fails its contract constraint"
-			    if (!_run($list_checks[%s], $args[0]));
+			_croak "%s argument %s of [$%s] fails its contract constraint" if (!_run($%s[%s], $args[0]));
 		    },
 		    ($state eq 'before')?'input':'return',
 		    $pos,
-		    $contractor,
+		    $varnames->{contractor},
+		    $varnames->{list_check},
 		    $i;
 		}
 
@@ -219,23 +285,22 @@ sub _compile {
 
 		# croak if odd number of elements
 		$str_code .= sprintf q{
-		    _croak "odd number of hash-style %s arguments in [%s]"
-			if (scalar @args %% 2);
+		    _croak "odd number of hash-style %s arguments in [$%s]" if (scalar @args %% 2);
 		    my %%args = @args;
 		},
 		($state eq 'before')?'input':'return',
-		$contractor;
+		$varnames->{contractor};
 
 		# check the value of each key in the argument hash
 		while (my ($key,$check) = each %hash_checks) {
 		    if (defined $check) {
 			$str_code .= sprintf q{
-			    _croak "%s argument of [%s] for key \'%s\' fails its contract constraint"
-				if (!_run($hash_checks{%s}, $args{%s}));
+			    _croak "%s argument of [$%s] for key \'%s\' fails its contract constraint" if (!_run($%s{%s}, $args{%s}));
 			},
 			($state eq 'before')?'input':'return',
-			$contractor,
+			$varnames->{contractor},
 			$key,
+			$varnames->{hash_check},
 			$key,
 			$key;
 		    }
@@ -250,45 +315,16 @@ sub _compile {
 	# there should be no arguments left
 	if ($validator->has_hash_args) {
 	    $str_code .= sprintf q{
-		_croak "function [%s] got too many arguments"
-		    if (%%args);
-	    }, $contractor;
+		_croak "function [$%s] %s" if (%%args);
+	    }, $varnames->{contractor}, ($state eq 'before')?'got too many input arguments':'returned too many return values';
 	} else {
 	    $str_code .= sprintf q{
-		_croak "function [%s] got too many arguments"
-		    if (@args);
-	    }, $contractor;
+		_croak "function [$%s] %s" if (@args);
+	    }, $varnames->{contractor}, ($state eq 'before')?'got too many input arguments':'returned too many return values';
 	}
     }
 
-# TODO: skip compiling after part if not needed
-
-   return undef if ($str_code eq "");
-
-    $str_code = sprintf q{
-	$cref = sub {
-	    use Carp;
-	    %s
-	    }
-    }, $str_code;
-
-    # remove confusing left indentation
-    $str_code =~ s/^\s+//gm;
-
-    debug(2,join("\n",
-		 "Sub::Contract: wrapping this code $state [$contractor]:",
-		 "-------------------------------------------------------",
-		 $str_code,
-		 "-------------------------------------------------------"));
-
-    my $cref;
-    eval $str_code;
-
-    if (defined $@ and $@ ne "") {
-	confess "BUG: failed to compile contract ($@)";
-    }
-
-    return $cref;
+    return $str_code;
 }
 
 1;
@@ -337,7 +373,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.7 2008/04/28 15:47:50 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.9 2008/04/29 12:24:26 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

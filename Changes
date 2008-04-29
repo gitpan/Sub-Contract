@@ -10,3 +10,8 @@ Revision history for Perl extension Sub::Contract
         - replace Hook::WrapSub with builtin equivalent to enable memoizing later on
         - more tests
         - added benchmarking
+
+0.03  2008
+        - improve code generation
+        - more POD
+        - more tests
