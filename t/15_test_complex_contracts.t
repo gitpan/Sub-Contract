@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 15_test_complex_contracts.t,v 1.2 2008/04/29 10:53:45 erwan_lemonnier Exp $
+#   $Id: 15_test_complex_contracts.t,v 1.3 2008/05/07 09:08:21 erwan_lemonnier Exp $
 #
 
 package main;
@@ -52,7 +52,11 @@ sub test_contract {
 	};
 
 	if ($match) {
-	    ok( $@ =~ /$match.*at .*15_test_complex_contracts.t line \d+/, "$func dies on returning [$args]" );
+	    if ($match =~ /undefined argument/) {
+		ok( $@ =~ /$match at .*15_test_complex_contracts.t line \d+/, "$func dies on returning [$args]" );
+	    } else {
+		ok( $@ =~ /$match.*\n.*main::contract_$func.*at .*15_test_complex_contracts.t line \d+/, "$func dies on returning [$args]" );
+	    }
 	} else {
 	    ok( !defined $@ || $@ eq '', "$func does not die on returning [$args]" );
 	}
@@ -78,7 +82,7 @@ test_contract(
 	      scalar_add => [ 'a', 2 ],      "input argument 1 of .*scalar_add.* fails its contract constraint",
 	      scalar_add => [ 1, 'b' ],      "input argument 2 of .main::scalar_add. fails its contract constraint",
 	      scalar_add => [ 1, undef ],    "undefined argument",
-	      scalar_add => [ 1, 3, undef ], "function .main::scalar_add. got too many input arguments",
+	      scalar_add => [ 1, 3, undef ], "function .main::scalar_add. got unexpected input argument.s.",
 	      );
 
 $res = 'adb';
@@ -102,7 +106,7 @@ test_contract(
 	      scalar_add => [ 'a', 2 ],      "input argument 1 of .*scalar_add.* fails its contract constraint",
 	      scalar_add => [ 1, 'b' ],      "input argument 2 of .main::scalar_add. fails its contract constraint",
 	      scalar_add => [ 1, undef ],    "undefined argument",
-	      scalar_add => [ 1, 3, undef ], "function .main::scalar_add. got too many input arguments",
+	      scalar_add => [ 1, 3, undef ], "function .main::scalar_add. got unexpected input argument.s.",
 	      );
 
 # add a trickyer contract
@@ -129,7 +133,7 @@ test_contract(
 	      foo => [ undef, 1, undef, b => 89, a => undef ], undef,
 
 	      # errors:
-	      foo => [ undef, 1, undef, a => 78, b => 89, e => 7 ], "function .main::foo. got too many input arguments",
+	      foo => [ undef, 1, undef, a => 78, b => 89, e => 7 ], "function .main::foo. got unexpected input argument.s.",
 	      foo => [ undef, undef, undef, a => 78, b => 89 ],     "undefined argument",
 	      foo => [ undef, 1, undef, a => 'ad', b => 89 ],       "input argument of .main::foo. for key 'a' fails its contract constraint",
 	      foo => [ undef, 1, undef, a => 78, b => undef ],      "input argument of .main::foo. for key 'b' fails its contract constraint",

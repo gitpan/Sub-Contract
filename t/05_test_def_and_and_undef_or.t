@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 05_test_def_and_and_undef_or.t,v 1.1 2008/04/25 14:56:02 erwan_lemonnier Exp $
+#   $Id: 05_test_def_and_and_undef_or.t,v 1.2 2008/05/07 09:08:21 erwan_lemonnier Exp $
 #
 
 package Bob;
@@ -67,7 +67,7 @@ sub test_contract {
 	};
 
 	if ($match) {
-	    ok( $@ =~ /$match.*at .*05_test.*.t line \d+/, "add() dies on returning [$args]" );
+	    ok( $@ =~ /$match/, "add() dies on returning [$args]" );
 	} else {
 	    ok( !defined $@ || $@ eq '', "add() does not die on returning [$args]" );
 	    is($res,$want,"add() returned correct value");

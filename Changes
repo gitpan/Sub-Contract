@@ -11,7 +11,11 @@ Revision history for Perl extension Sub::Contract
         - more tests
         - added benchmarking
 
-0.03  2008
+0.03  2008-04-29
         - improve code generation
         - more POD
         - more tests
+
+0.04  2008-05-07
+        - named contract closure and make it visible in error stack traces
+        - fixed dependencies

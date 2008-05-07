@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 10_test_in.t,v 1.3 2008/04/29 10:53:45 erwan_lemonnier Exp $
+#   $Id: 10_test_in.t,v 1.4 2008/05/07 09:08:21 erwan_lemonnier Exp $
 #
 
 package My::Test;
@@ -84,8 +84,8 @@ ok(!defined $@ || $@ eq '', "compiled contracts");
 my @tests = (
 	     # test no arguments
 	     foo_none => [], undef,
-	     foo_none => [ 1 ], "function .main::foo_none. got too many input arguments",
-	     foo_none => [ undef ], "function .main::foo_none. got too many input arguments",
+	     foo_none => [ 1 ], "function .main::foo_none. got unexpected input argument.s.",
+	     foo_none => [ undef ], "function .main::foo_none. got unexpected input argument.s.",
 
 	     # test array arguments
 	     foo_array => [ 1234, undef, 0 ], undef,
@@ -95,7 +95,7 @@ my @tests = (
 	     foo_array => [ 1234, undef, undef ], "input argument 3 of .main::foo_array. fails its contract constraint",
 	     foo_array => [ 'abc', undef, 0 ], "input argument 1 of .main::foo_array. fails its contract constraint",
 
-	     foo_array => [ 1234, undef, 0, undef ], "function .main::foo_array. got too many input arguments",
+	     foo_array => [ 1234, undef, 0, undef ], "function .main::foo_array. got unexpected input argument.s.",
 	     foo_array => [ 1234, undef ], "input argument 3 of .main::foo_array. fails its contract constraint",
 	     foo_array => [ 1234 ], "input argument 3 of .main::foo_array. fails its contract constraint",
 	     foo_array => [ ], "input argument 1 of .main::foo_array. fails its contract constraint",
@@ -103,7 +103,7 @@ my @tests = (
 	     # test hash arguments
 	     foo_hash => [ a => 0, b => 128376 ], undef,
 	     foo_hash => [ b => 128376, a => 0 ], undef,
-	     foo_hash => [ b => 128376, a => 0, c => 0 ], "function .main::foo_hash. got too many input arguments",
+	     foo_hash => [ b => 128376, a => 0, c => 0 ], "function .main::foo_hash. got unexpected input argument.s.",
 	     foo_hash => [ b => 128376, a => 0, 0 ], "odd number of hash-style input arguments in .main::foo_hash.",
 	     foo_hash => [ b => 128376, a => 1 ], "input argument of .main::foo_hash. for key \'a\' fails its contract constraint",
 	     foo_hash => [ b => 128376, a => undef ], "input argument of .main::foo_hash. for key \'a\' fails its contract constraint",
@@ -122,7 +122,7 @@ my @tests = (
 	     # test method call
 	     method_hash => [ a => 0, b => 128376 ], undef,
 	     method_hash => [ b => 1, a => 0 ], undef,
-	     method_hash => [ b => 128376, a => 0, c => 0 ], "function .My::Test::method_hash. got too many input arguments",
+	     method_hash => [ b => 128376, a => 0, c => 0 ], "function .My::Test::method_hash. got unexpected input argument.s.: c",
 	     method_hash => [ b => 128376, a => 0, 0 ], "odd number of hash-style input arguments in .My::Test::method_hash.",
 	     method_hash => [ b => 128376, a => 1 ], "input argument of .My::Test::method_hash. for key \'a\' fails its contract constraint",
 	     method_hash => [ b => 128376, a => undef ], "input argument of .My::Test::method_hash. for key \'a\' fails its contract constraint",
@@ -148,7 +148,7 @@ while (@tests) {
     };
 
     if ($match) {
-	ok( $@ =~ /$match.*at .*10_test_in.t line \d+/, "$func dies on arguments [$args]" );
+	ok( $@ =~ /$match.*\n.*(My::Test|main)::contract_$func\(.*at .*10_test_in.t line \d+/, "$func dies on arguments [$args]" );
     } else {
 	ok( !defined $@ || $@ eq '', "$func does not die on arguments [$args]" );
     }

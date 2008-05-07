@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 11_test_out.t,v 1.2 2008/04/29 10:53:45 erwan_lemonnier Exp $
+#   $Id: 11_test_out.t,v 1.3 2008/05/07 09:08:21 erwan_lemonnier Exp $
 #
 
 package My::Test;
@@ -78,8 +78,8 @@ ok(!defined $@ || $@ eq '', "compiled contracts");
 my @tests = (
 	     # test no arguments
 	     foo_none => [], undef,
-	     foo_none => [ 1 ], "function .main::foo_none. returned too many return values",
-	     foo_none => [ undef ], "function .main::foo_none. returned too many return values",
+	     foo_none => [ 1 ], "function .main::foo_none. returned unexpected result value.s.",
+	     foo_none => [ undef ], "function .main::foo_none. returned unexpected result value.s.",
 
 	     # test array arguments
 	     foo_array => [ 1234, undef, 0 ], undef,
@@ -89,7 +89,7 @@ my @tests = (
 	     foo_array => [ 1234, undef, undef ], "return argument 3 of .main::foo_array. fails its contract constraint",
 	     foo_array => [ 'abc', undef, 0 ], "return argument 1 of .main::foo_array. fails its contract constraint",
 
-	     foo_array => [ 1234, undef, 0, undef ], "function .main::foo_array. returned too many return values",
+	     foo_array => [ 1234, undef, 0, undef ], "function .main::foo_array. returned unexpected result value.s.",
 	     foo_array => [ 1234, undef ], "return argument 3 of .main::foo_array. fails its contract constraint",
 	     foo_array => [ 1234 ], "return argument 3 of .main::foo_array. fails its contract constraint",
 	     foo_array => [ ], "return argument 1 of .main::foo_array. fails its contract constraint",
@@ -97,7 +97,7 @@ my @tests = (
 	     # test hash arguments
 	     foo_hash => [ a => 0, b => 128376 ], undef,
 	     foo_hash => [ b => 128376, a => 0 ], undef,
-	     foo_hash => [ b => 128376, a => 0, c => 0 ], "function .main::foo_hash. returned too many return values",
+	     foo_hash => [ b => 128376, a => 0, c => 0 ], "function .main::foo_hash. returned unexpected result value.s.",
 	     foo_hash => [ b => 128376, a => 0, 0 ], "odd number of hash-style return arguments in .main::foo_hash.",
 	     foo_hash => [ b => 128376, a => 1 ], "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
 	     foo_hash => [ b => 128376, a => undef ], "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
@@ -135,7 +135,7 @@ while (@tests) {
     };
 
     if ($match) {
-	ok( $@ =~ /$match.*at .*11_test_out.t line \d+/, "$func dies on returning [$args]" );
+	ok( $@ =~ /$match.*\n.*(My::Test|main)::contract_$func\(.*at .*11_test_out.t line \d+/, "$func dies on returning [$args]" );
     } else {
 	ok( !defined $@ || $@ eq '', "$func does not die on returning [$args]" );
     }

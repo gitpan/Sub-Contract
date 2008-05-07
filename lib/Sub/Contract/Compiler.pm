@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.9 2008/04/29 12:24:26 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.10 2008/05/07 09:08:21 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
@@ -12,6 +12,7 @@ use Carp qw(croak confess);
 use Data::Dumper;
 use Sub::Contract::Debug qw(debug);
 use Hook::WrapSub qw(wrap_subs unwrap_subs);
+use Sub::Name;
 
 #---------------------------------------------------------------
 #
@@ -90,6 +91,7 @@ sub enable {
 	my $cref_pre = sub {
 	    %s
 	};
+
 	my $cref_post = sub {
 	    %s
 	};
@@ -149,6 +151,10 @@ sub enable {
     no warnings;
     *{ $self->contractor } = $contract;
 
+    my $name = $self->contractor;
+    $name =~ s/::([^:]+)$/::contract_$1/;
+    subname $name, $contract;
+
     $self->{is_enabled} = 1;
 
     return $self;
@@ -186,8 +192,8 @@ sub is_enabled {
 # croak from contract code, with proper stack level
 sub _croak {
     my $msg = shift;
-    local $Carp::CarpLevel = 3;
-    croak "$msg";
+    local $Carp::CarpLevel = 2;
+    confess "$msg";
 }
 
 # TODO: insert _run inline in compiled code
@@ -315,12 +321,12 @@ sub _generate_code {
 	# there should be no arguments left
 	if ($validator->has_hash_args) {
 	    $str_code .= sprintf q{
-		_croak "function [$%s] %s" if (%%args);
-	    }, $varnames->{contractor}, ($state eq 'before')?'got too many input arguments':'returned too many return values';
+		_croak "function [$%s] %s: ".join(" ",keys %%args) if (%%args);
+	    }, $varnames->{contractor}, ($state eq 'before')?'got unexpected input argument(s)':'returned unexpected result value(s)';
 	} else {
 	    $str_code .= sprintf q{
 		_croak "function [$%s] %s" if (@args);
-	    }, $varnames->{contractor}, ($state eq 'before')?'got too many input arguments':'returned too many return values';
+	    }, $varnames->{contractor}, ($state eq 'before')?'got unexpected input argument(s)':'returned unexpected result value(s)';
 	}
     }
 
@@ -373,7 +379,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.9 2008/04/29 12:24:26 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.10 2008/05/07 09:08:21 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 
