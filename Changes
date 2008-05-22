@@ -19,3 +19,8 @@ Revision history for Perl extension Sub::Contract
 0.04  2008-05-07
         - named contract closure and make it visible in error stack traces
         - fixed dependencies
+
+0.05  2008-05-22
+        - skip tests if missing module dependencies
+        - added is_a
+        - implemented Cache

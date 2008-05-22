@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 06_test_context.t,v 1.4 2008/04/28 15:43:32 erwan_lemonnier Exp $
+#   $Id: 06_test_context.t,v 1.6 2008/05/22 16:06:10 erwan_lemonnier Exp $
 #
 
 package main;
@@ -14,7 +14,7 @@ use Data::Dumper;
 BEGIN {
 
     use check_requirements;
-    plan tests => 163;
+    plan tests => 97;
 
     use_ok("Sub::Contract",'contract');
 };
@@ -132,7 +132,8 @@ my $c = contract('foo')
 #
 #----------------------------------------------
 
-$c->memoize->enable;
+$c->cache->enable;
+my $res;
 
 # no context with contract and memoization
 {
@@ -140,22 +141,12 @@ $c->memoize->enable;
     @pre_args = @post_args = ();
     @pre_result = @post_result = ();
 
-    foo();
-    is($_,undef,"no context (without args) (memoized on)");
-    foo();
-    is($_,undef,"no context (without args) (from cache)");
-}
+    eval { foo(); };
+    ok($@ =~ /calling memoized contracted subroutine main::foo in void context/, "die if memoized sub called in void context");
 
-{
-    $pre_wantarray = $post_wantarray = undef;
-    @pre_args = @post_args = ('bob',1,['a',4]);
-    @pre_result = @post_result = ();
-
-    # TODO: anonymous array in params will probably make memoize croak...
-    foo('bob',1,['a',4]);
-    is($_,undef,"no context (with args) (memoized on)");
-    foo('bob',1,['a',4]);
-    is($_,undef,"no context (with args) (from cache)");
+    # die even on second call with same (no) arguments
+    eval { foo(); };
+    ok($@ =~ /calling memoized contracted subroutine main::foo in void context/, "die even on second call");
 }
 
 # scalar context with contract and memoization
@@ -165,7 +156,7 @@ $c->memoize->enable;
     @pre_result = ();
     @post_result = ('scalar context');
 
-    my $res = foo();
+    $res = foo();
     is($res,"scalar context","scalar context (without args) (memoized on)");
     $res = foo();
     is($res,"scalar context","scalar context (without args) (from cache)");
@@ -177,7 +168,7 @@ $c->memoize->enable;
     @pre_result = ();
     @post_result = ('scalar context');
 
-    my $res = foo(34);
+    $res = foo(34);
     is($res,"scalar context","scalar context (with args) (memoized on)");
     $res = foo(34);
     is($res,"scalar context","scalar context (with args) (from cache)");

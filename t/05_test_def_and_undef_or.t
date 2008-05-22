@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 05_test_def_and_and_undef_or.t,v 1.2 2008/05/07 09:08:21 erwan_lemonnier Exp $
+#   $Id: 05_test_def_and_undef_or.t,v 1.1 2008/05/19 13:58:27 erwan_lemonnier Exp $
 #
 
 package Bob;

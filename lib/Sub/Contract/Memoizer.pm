@@ -2,18 +2,18 @@
 #
 #   Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
 #
-#   $Id: Memoizer.pm,v 1.2 2007/04/27 12:46:29 erwan_lemonnier Exp $
-#
-#   070320 erwan First cast
+#   $Id: Memoizer.pm,v 1.3 2008/05/22 16:03:24 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Memoizer;
 
 use strict;
 use warnings;
-use Carp qw(croak);
+use Carp qw(croak confess);
 use Data::Dumper;
 use Symbol;
+
+use Cache::Memory;
 
 #---------------------------------------------------------------
 #
@@ -27,45 +27,78 @@ use Symbol;
 # the cache part
 #
 
-sub memoize {
+# TODO: implement stats => 1
+# TODO: implement file cache
+# TODO: implement expiry time
+
+sub cache {
     my ($self,%args) = @_;
-    my $size = delete $args{size};
+    my $size = delete $args{size} || 10000000; # default size = 10mb
 
-    croak "memoize() got unknown arguments: ".Dumper(%args) if (%args);
+    croak "cache() got unknown arguments: ".Dumper(%args) if (%args);
+    croak "size should be a number" if (!defined $size || $size !~ /^\d+$/);
 
-    # TODO: ->reset should play well with memoize
-
-    $self->{is_memoized} = 1;
-    # TODO: use Memoize
-
-#    my $cache = new Sub::Pluto::Cache();
-#    $cache->set_size($size) if ($size);
-#    $self->_cache($cache);
+    # NOTE: $contract->reset() deletes this cache
+    $self->{cache} = new Cache::Memory( size_limit => $size );
 
     return $self;
 }
 
-#sub unmemoize ?
+sub _make_cache_key {
+    my (@args) = @_;
 
-#sub is_memoized {
-#    return $_[0]->_is_memoized();
-#}
+    # NOTE: previously, we used Dumper(@args) as the key, but Dumper is quite
+    # slow, hence the use of join() here. But join will replace references
+    # with an adress code while concatening to the string. 2 series of input
+    # arguments with the same scalar reference, but for which the refered scalar
+    # had different values will therefore yield the same key, though the
+    # results will be different.
+    # therefore we want to forbid the use of contract's cache whith references
+    # but we have to think of speed...
 
-sub flush_cache {
+    if (grep({ ref $_; } @args)) {
+	confess "ERROR: cache cannot handle input arguments that are references. arguments were:\n".Dumper(@args);
+    }
+
+    @args = map { (defined $_) ? $_ : "undef"; } @args;
+
+    return join(":",@args);
+}
+
+sub get_cache {
+    return $_->{cache};
+}
+
+sub has_cache {
+    return (exists $_->{cache}) ? 1:0;
+}
+
+sub clear_cache {
     my $self = shift;
-    # TODO: call Memoize::flush_cache on right function
+    confess "contract defines no cache" if (!exists $self->{cache});
+    $self->{cache}->clear;
+    return $self;
+}
+
+sub add_to_cache {
+    my ($self,$args,$results) = @_;
+    confess "add_to_cache expects an array ref of arguments" if (!defined $args || ref $args ne "ARRAY");
+    confess "add_to_cache expects an array ref of results"   if (!defined $results || ref $results ne "ARRAY");
+    confess "contract defines no cache" if (!exists $self->{cache});
+
+    my $key = _make_cache_key(@{$args});
+    $self->{cache}->set($key,$results);
+
     return $self;
 }
 
 1;
 
-#__END__
-
 =pod
 
 =head1 NAME
 
-Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
+Sub::Contract::Memoizer - Implement the caching behaviour of a contract
 
 =head1 SYNOPSIS
 
@@ -83,9 +116,17 @@ See 'Sub::Contract'.
 
 =over 4
 
-=item C<< memoize >>
+=item C<< $contract->cache([size => $max_size]) >>
 
-=item C<< flush_cache >>
+=item C<< $contract->has_cache([size => $max_size]) >>
+
+=item C<< $contract->get_cache >>
+
+Returns the instance of Cache used by this contract.
+
+=item C<< $contract->clear_cache >>
+
+=item C<< $contract->add_to_cache(\@args, \@results) >>
 
 =back
 
@@ -95,7 +136,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Memoizer.pm,v 1.2 2007/04/27 12:46:29 erwan_lemonnier Exp $
+$Id: Memoizer.pm,v 1.3 2008/05/22 16:03:24 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

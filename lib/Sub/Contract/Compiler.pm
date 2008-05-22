@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.10 2008/05/07 09:08:21 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.11 2008/05/22 16:03:24 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
@@ -33,6 +33,7 @@ sub enable {
     my $check_in      = $self->{pre};
     my $check_out     = $self->{post};
     my $invariant     = $self->{invariant};
+    my $cache         = $self->{cache};
 
     my @list_checks_in;
     my %hash_checks_in;
@@ -84,7 +85,49 @@ sub enable {
     # find contractor's code ref
     my $cref = $self->contractor_cref;
 
+    # if caching is enabled, start with it
+    if (defined $cache) {
+    }
+
+
+
+
     # wrap validation code around contracted sub
+
+
+    my $str_cache_enter         = "";
+    my $str_cache_return_array  = "";
+    my $str_cache_return_scalar = "";
+
+    if ($cache) {
+	$str_cache_enter = sprintf q{
+	    if (!defined $Sub::Contract::wantarray) {
+		_croak "calling memoized contracted subroutine %s in void context";
+	    }
+
+	    if (grep({ ref $_; } @_)) {
+		_croak "contract cannot memoize result when input arguments contain references";
+	    }
+
+	    my $key = join(":", map( { (defined $_) ? $_ : "undef"; } ( ($Sub::Contract::wantarray) ? "array":"scalar"),@_));
+	    if ($cache->exists($key)) {
+                if ($Sub::Contract::wantarray) {
+		    return @{$cache->get($key)};
+		} else {
+		    return $cache->get($key);
+		}
+	    }
+	}, $contractor;
+
+	$str_cache_return_array = sprintf q{
+	    $cache->set($key,\@Sub::Contract::results);
+	};
+
+	$str_cache_return_scalar = sprintf q{
+	    $cache->set($key,$s);
+	};
+    }
+
     my $str_contract = sprintf q{
 	use Carp;
 
@@ -97,15 +140,19 @@ sub enable {
 	};
 
 	$contract = sub {
+
+	    local $Sub::Contract::wantarray = wantarray;
+
+	    %s
+
 	    # TODO: this code is not re-entrant. use local variables for args/wantarray/results. is local enough?
 
 	    local @Sub::Contract::args = @_;
-	    local $Sub::Contract::wantarray = wantarray;
 	    local @Sub::Contract::results = ();
 
 	    if (!defined $Sub::Contract::wantarray) {
 		# void context
-		&$cref_pre() if ($cref_pre);
+		&$cref_pre() if ($cref_pre);  # TODO: those if ($cref_pre/post) could be removed
 		&$cref(@Sub::Contract::args);
 		@Sub::Contract::results = ();
 		&$cref_post(@Sub::Contract::results) if ($cref_post);
@@ -116,6 +163,7 @@ sub enable {
 		&$cref_pre() if ($cref_pre);
 		@Sub::Contract::results = &$cref(@Sub::Contract::args);
 		&$cref_post() if ($cref_post);
+		%s
 		return @Sub::Contract::results;
 
 	    } else {
@@ -124,10 +172,17 @@ sub enable {
 		my $s = &$cref(@Sub::Contract::args);
 		@Sub::Contract::results = ($s);
 		&$cref_post() if ($cref_post);
+		%s
 		return $s;
 	    }
 	}
-    }, $code_pre, $code_post;
+    },
+    $code_pre,
+    $code_post,
+    $str_cache_enter,
+    $str_cache_return_array,
+    $str_cache_return_scalar;
+
 
     # compile code
     $str_contract =~ s/^\s+//gm;
@@ -379,7 +434,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.10 2008/05/07 09:08:21 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.11 2008/05/22 16:03:24 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

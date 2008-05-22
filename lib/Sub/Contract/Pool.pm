@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Pool - The pool of contracts
 #
-#   $Id: Pool.pm,v 1.7 2008/04/25 14:01:52 erwan_lemonnier Exp $
+#   $Id: Pool.pm,v 1.8 2008/05/19 14:09:47 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Pool;
@@ -144,17 +144,6 @@ sub find_contracts_matching {
     return @contracts;
 }
 
-################################################################
-#
-#   compile contracts on demand at runtime
-#
-
-sub AUTOLOAD {
-    my $caller = $AUTOLOAD;
-}
-
-
-
 1;
 
 __END__
@@ -169,21 +158,26 @@ Sub::Contract::Pool - A pool of all subroutine contracts
 
     my $pool = get_contract_pool();
 
-TODO
+    # disable all contracts in package My::Test
+    foreach my $contract ($pool->find_contracts_matching("^My::Test::[^:]$")) {
+        $contract->disable;
+    }
+
+    # or simply
+    disable_contracts_matching("^My::Test::[^:]$");
 
 =head1 DESCRIPTION
 
-All subroutine contracts defined via creating instances of
-Sub::Contract or Sub::Contract::Memoizer are automatically
-added to a pool of contracts.
+Every subroutine contracts defined with Sub::Contract is
+automatically added to a pool of contracts.
 
-You can query this pool to retrieve contracts defined for
-specific parts of your code, and modify, recompile, enable
-and disable contracts selectively at runtime.
+You can query this pool to retrieve contracts based on the
+name of the contractors (ie package name + subroutine name).
+You can then modify, recompile, enable and disable contracts
+that you fetch from the pool, at any time during runtime.
 
-Sub::Contract::Pool is a singleton pattern, giving you
-access to a unique contract pool created at compile time
-by Sub::Contract.
+Sub::Contract::Pool uses a singleton pattern, giving you
+access to a unique contract pool.
 
 =head1 API
 
@@ -196,7 +190,7 @@ Return the contract pool.
 =item C<< new() >>
 
 Pool constructor, for internal use only.
-DO NOT USE NEW, always use C<< get_contract_pool() >>.
+DO NOT USE NEW(), always use C<< get_contract_pool() >>.
 
 =item C<< $pool->list_all_contracts >>
 
@@ -231,7 +225,6 @@ as for C<find_contracts_matching>.
 
 Find all the contracts registered in the pool and whose contractor's
 fully qualified names matches the string C<$regexp>.
-TODO
 
 =back
 
@@ -241,7 +234,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Pool.pm,v 1.7 2008/04/25 14:01:52 erwan_lemonnier Exp $
+$Id: Pool.pm,v 1.8 2008/05/19 14:09:47 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 
