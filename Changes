@@ -24,3 +24,7 @@ Revision history for Perl extension Sub::Contract
         - skip tests if missing module dependencies
         - added is_a
         - implemented Cache
+
+0.06  2008-05-24
+        - fixed broken dependency. thanks to Maddingue!
+        - added benchmarking for inline variant

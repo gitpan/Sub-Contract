@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.11 2008/05/22 16:03:24 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.12 2008/05/24 20:40:34 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
@@ -11,7 +11,6 @@ use warnings;
 use Carp qw(croak confess);
 use Data::Dumper;
 use Sub::Contract::Debug qw(debug);
-use Hook::WrapSub qw(wrap_subs unwrap_subs);
 use Sub::Name;
 
 #---------------------------------------------------------------
@@ -434,7 +433,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.11 2008/05/22 16:03:24 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.12 2008/05/24 20:40:34 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 
