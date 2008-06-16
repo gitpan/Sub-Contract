@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::ArgumentChecks - Conditions on input/return arguments
 #
-#   $Id: ArgumentChecks.pm,v 1.2 2008/04/25 14:01:52 erwan_lemonnier Exp $
+#   $Id: ArgumentChecks.pm,v 1.4 2008/06/16 14:49:03 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::ArgumentChecks;
@@ -15,6 +15,8 @@ use accessors ('type',         # 'in' or 'out'
 	       'list_checks',  # an anonymous array of checks on list-style passed arguments
 	       'hash_checks',  # an anonymous hash of checks on hash-style passed arguments
 	       );
+
+our $VERSION = '0.07';
 
 #---------------------------------------------------------------
 #
@@ -58,7 +60,7 @@ __END__
 
 =head1 NAME
 
-Sub::Contract::ArgumentChecks - Hold validation conditions on input/return arguments
+Sub::Contract::ArgumentChecks - Hold the constraints on input/return arguments
 
 =head1 SYNOPSIS
 
@@ -71,8 +73,8 @@ either the input arguments or the return results of a given subroutine.
 
 Subroutine arguments in perl can be passed as a list of values, or as a hash,
 or as a list mixing both values and hash. In fact arguments are always passed
-as a list but the element of this list might describe a hash after a given
-position in the list.
+as a list but the elements of this list might have to be considered as members
+of a hash after a given position in the list.
 
 An instance of Sub::Contract::ArgumentChecks describe the contract conditions
 on any optional heading list arguments and any optional trailing hash arguments
@@ -113,7 +115,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: ArgumentChecks.pm,v 1.2 2008/04/25 14:01:52 erwan_lemonnier Exp $
+$Id: ArgumentChecks.pm,v 1.4 2008/06/16 14:49:03 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

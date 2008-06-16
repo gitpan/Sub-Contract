@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Debug - Guess once...
 #
-#   $Id: Debug.pm,v 1.4 2008/05/22 16:03:24 erwan_lemonnier Exp $
+#   $Id: Debug.pm,v 1.5 2008/06/16 14:10:03 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Debug;
@@ -12,13 +12,15 @@ use Carp qw(croak);
 
 use base qw(Exporter);
 
+our $VERSION = '0.07';
+
 our @EXPORT = ();
 our @EXPORT_OK = ('debug');
 
 # to turn on debugging output in Sub::Contract, just
 # set $DEBUG to more than 0:
 
-my $DEBUG = 0;
+my $DEBUG = 3;
 
 #---------------------------------------------------------------
 #
@@ -75,7 +77,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Debug.pm,v 1.4 2008/05/22 16:03:24 erwan_lemonnier Exp $
+$Id: Debug.pm,v 1.5 2008/06/16 14:10:03 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

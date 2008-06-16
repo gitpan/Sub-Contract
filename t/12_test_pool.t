@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 12_test_pool.t,v 1.2 2008/04/25 13:48:10 erwan_lemonnier Exp $
+#   $Id: 12_test_pool.t,v 1.3 2008/06/16 14:58:15 erwan_lemonnier Exp $
 #
 
 use strict;
@@ -28,7 +28,7 @@ use Test::More;
 BEGIN {
 
     use check_requirements;
-    plan tests => 91;
+    plan tests => 88;
 
     use_ok("Sub::Contract",'contract');
     use_ok("Sub::Contract::Pool",'get_contract_pool');
@@ -42,13 +42,9 @@ sub bar { return 'bar'; }
 my $pool = get_contract_pool();
 ok(ref $pool eq 'Sub::Contract::Pool', "get_contract_pool returns a pool");
 
-# check that new() is forbidden
-eval { new Sub::Contract::Pool; };
-ok($@ =~ /use get_contract_pool\(\) instead of new/, "new is forbidden");
-
 # check that has_contract validates arguments
 eval { $pool->has_contract() };
-ok($@ =~ /has_contract.. expects a fully qualified function name/, "has_contract croaks if no arguments $@");
+ok($@ =~ /has_contract.. expects a fully qualified function name/, "has_contract croaks if no arguments");
 eval { $pool->has_contract(1,2)};
 ok($@ =~ /has_contract.. expects a fully qualified function name/, "has_contract croaks if 2 arguments");
 
@@ -141,16 +137,16 @@ look_at_pool(size => 4,
 # test find_contracts_matching croak
 
 my @tests = (
-    'foo'       => 1, [ 'main::foo' ],
-    '^.*::foo$' => 1, [ 'main::foo' ],
-    '^::foo$'   => 0, [ ],
-    'main::foo' => 1, [ 'main::foo' ],
-    'main::'    => 2, [ 'main::foo', 'main::bar' ],
-    '^main'     => 2, [ 'main::foo', 'main::bar' ],
-    '^main::z'  => 0, [ ],
-    '::'        => 4, [ 'main::foo', 'main::bar', 'My::Class::Two::two', 'My::Class::One::one' ],
-    '(two|foo)' => 2, [ 'main::foo', 'My::Class::Two::two' ],
-    'o'         => 3, [ 'main::foo', 'My::Class::Two::two', 'My::Class::One::one' ],
+    'foo'         => 0, [ ],
+    '.*::foo'     => 1, [ 'main::foo' ],
+    '::foo'       => 0, [ ],
+    'main::foo'   => 1, [ 'main::foo' ],
+    'main::.*'    => 2, [ 'main::foo', 'main::bar' ],
+    'main'        => 0, [ ],
+    'main::z'     => 0, [ ],
+    '.*::.*'      => 4, [ 'main::foo', 'main::bar', 'My::Class::Two::two', 'My::Class::One::one' ],
+    '.*(two|foo)' => 2, [ 'main::foo', 'My::Class::Two::two' ],
+    '.*o.*'         => 3, [ 'main::foo', 'My::Class::Two::two', 'My::Class::One::one' ],
 
     # TODO: add more matches?
     );

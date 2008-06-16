@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.21 2008/05/24 20:40:34 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.24 2008/06/16 14:49:03 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -28,7 +28,7 @@ our @EXPORT_OK = qw( contract
 		     is_a
 		     );
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -114,7 +114,7 @@ sub new {
     croak "new() expects a subroutine name as first argument" if (!defined $fullname);
     croak "new() got unknown arguments: ".Dumper(%args) if (keys %args != 0);
 
-    # TODO: test for contractor existence here
+    # identify the subroutine to contract and make sure it exists
     my $contractor_cref;
     my $contractor;
 
@@ -225,7 +225,7 @@ sub _set_in_out {
 	$pos += 2;
     }
 
-    # everything ok!perl 06
+    # everything ok!
     $self->{$type} = $validator;
     return $self;
 }
@@ -294,22 +294,6 @@ sub contractor_cref {
 
 # TODO: implement return?
 
-# contract('my_func')
-#     ->invariant( sub { die "blah" if (ref $_[0] ne 'blob'); } )
-#     ->in(prsid => \&check1,
-#          fndid => \&check2,
-#     )->out(\&is_boolean)
-#     ->memoize( max => 1000 );
-#
-# or
-#     ->cache( size => 1000 );
-#
-# sub my_func {}
-#
-# my $pool = Sub::Contract::Pool::get_pool;
-# $pool->enable_all_contracts;
-
-
 1;
 
 __END__
@@ -320,50 +304,69 @@ Sub::Contract - Pragmatic contract programming for Perl
 
 =head1 SYNOPSIS
 
-To contract a function 'divid' that accepts a hash of 2 integer values
-and returns a list of 2 integer values:
+First of all, you should define a library of pseudo-type constraints. A type
+constraint is a subroutine that returns true if the argument if of the right
+type, and returns false or croaks if not. Example:
 
-    contract('divid')
-        ->in(a => sub { defined $_ && $_ =~ /^\d+$/},
-             b => sub { defined $_ && $_ =~ /^\d+$/},
-            )
-        ->out(sub { defined $_ && $_ =~ /^\d+$/},
-              sub { defined $_ && $_ =~ /^\d+$/},
-             )
-        ->enable;
+    use Regexp::Common;
 
-    sub divid {
-	my %args = @_;
-	return ( int($args{a} / $args{b}), $args{a} % $args{b} );
+    # test that variable is an integer
+    sub is_integer {
+        my $i = shift;
+        return 0 if (!defined $i);
+        return 0 if (ref $i ne "");
+        return 0 if ($i !~ /^$RE{num}{int}$/);
+        return 1;
     }
 
-Or, if you have a function C<is_integer>:
+To contract a function 'surface' that takes a list of 2 integers and returns 1:
 
-    contract('divid')
-        ->in(a => \&is_integer,
-             b => \&is_integer,
-            )
-        ->out(\&is_integer, \&is_integer);
+    use Sub::Contract qw(contract);
+
+    contract('surface')
+        ->in(\&is_integer, \&is_integer)
+        ->out(\&is_integer)
         ->enable;
 
-If C<divid> was a method of an instance of 'Maths::Integer':
+    sub surface {
+        # no need to validate arguments. just implement the logic
+	return $_[0]* $_[1];
+    }
 
-    contract('divid')
-        ->in(sub { defined $_ && ref $_ eq 'Maths::Integer' },
-             a => \&is_integer,
-             b => \&is_integer,
+If 'surface' took a hash of 2 integers instead:
+
+    use Sub::Contract qw(contract);
+
+    contract('surface')
+        ->in(height => \&is_integer, width => \&is_integer)
+        ->out(\&is_integer)
+        ->enable;
+
+    sub surface {
+	my %args = @_;
+	return $args{height}* $args{width};
+    }
+
+If C<surface> was a method of an instance of 'Maths::Geometry':
+
+    use Sub::Contract qw(contract is_a);
+
+    contract('surface')
+        ->in(is_a('Maths::Geometry'),
+             height => \&is_integer,
+             width  => \&is_integer,
             )
-        ->out(\&is_integer, \&is_integer);
+        ->out(\&is_integer)
         ->enable;
 
 Or if you don't want to do any check on the type of self:
 
-    contract('divid')
+    contract('surface')
          ->in(undef,
-              a => \&is_integer,
-              b => \&is_integer,
+              height => \&is_integer,
+              width  => \&is_integer,
              )
-        ->out(\&is_integer, \&is_integer);
+        ->out(\&is_integer)
         ->enable;
 
 You can also declare invariants, pre- and post-conditions as in
@@ -390,11 +393,14 @@ by contract paradigm in Perl.
 
 Sub::Contract is not a design-by-contract framework.
 
+Sub::Contract is designed to make it very easy to constrain subroutines input
+arguments and return values.
+
 Perl is a weakly typed language in which variables have a dynamic content
 at runtime. A feature often wished for in such circumstances is a way
 to define constraints on a subroutine's arguments and on its
 return values. A constraint is basically a test that the specific argument
-has to pass otherwise we croak.
+has to pass.
 
 For example, a subroutine C<add()> that takes 2 integers and return their
 sum could have constraints on both input arguments and on the return value
@@ -489,27 +495,23 @@ emit an error looking as if the contractor croaked.
 =head2 Contracts and context
 
 In Perl, contractors are always called in a given context. It can be either scalar
-context, array context or no context (no return value expected).
+context, array context or void context (no return value expected).
 
 How this affects a contractor's contract is rather tricky. The contractor's return
-values may be context sensitive. Therefore, the following choices were made when
-designing Sub::Contract:
+values may be context sensitive, if the contractor for example checks C<wantarray>.
+But if the contract code was to respect the calling context when calling the
+contractor, it would not be able to validate return values when called in void
+context, or it wouldn't be able to validate a list of return values if called
+in scalar context.
 
-=over 4
+To solve this dilemna, Sub::Contract DOES NOT RESPECT CONTEXT. This is a design
+decision.
 
-=item * If a subroutine usually returns a scalar or an array but is called
-in void context, the part of the contract that validates return values
-will not see any return values from the subroutine. This implies that calling
-in void context a subroutine whose contract has constraints on the return values
-will be seen as a contract breach.
+This means that you SHOULD NOT CONTRACT a subroutine that relies on C<wantarray>
+or is calling-context sensitive. And if you really have to contract such a subroutine,
+do not specify any constraints on its return values with C<out>.
 
-=item * If a subroutine returns an array but is called in scalar context, the
-part of the contract that validates return values will see only 1 return value
-from this subroutine: an integer telling the number of elements in the returned
-array.  This implies that calling in scalar context a subroutine whose contract
-has constraints on a list of return values will be seen as a contract breach.
-
-=back
+See C<out()> for a details.
 
 =head2 Issues with contract programming
 
@@ -555,7 +557,7 @@ heavier syntax if you are only seeking to validate input arguements and return v
 
 Class::Agreement does not provide memoization from within the contract.
 
-
+TODO: compare with Argument::Validate
 TODO: more description
 TODO: how to enable contracts -> enable on each contract, or via the pool
 TODO: validation code should not change @_, else weird bugs...
@@ -723,10 +725,44 @@ C<undef_or> (see further down).
 
 Same as C<in> but for validating return arguments one by one.
 
-C<out()> validates return values in a context sensitive way. See
-'Contract and context' under 'Discussion' for details.
-
 The syntax of C<@checks> is the same as for C<in()>.
+
+The content of C<@checks> defines the context in which the contractor
+is called, according to the following cases:
+
+    # case 1: out() is not specified
+    # in that case, no constraints are applied on the return
+    # values, and the subroutine's calling context is respected
+
+    contract("foo")->enable;
+
+
+    # case 1: no return argument expected
+    # the contract fails if foo returns something
+    # the contract then always calls foo in array context
+
+    contract("foo")->out()->enable;
+
+
+    # case 2: out() defines one constraints
+    # this means that foo is expected to return a scalar.
+    # therefore, foo's contract will fail if it is called in array context.
+    # the contract then always calls foo in scalar context, even if
+    # foo was called void context.
+
+    contract("foo")->out(\&is_integer)->enable;
+
+
+    # case 2: out() defines more than one constraints
+    # this means that foo is expected to return a list of values.
+    # the contract then always calls foo in array context, even if
+    # foo was called in scalar or void context.
+
+    contract("foo")->out(\&is_integer)->enable;
+
+As you can see from the cases above, the only situation when Sub::Contract
+respects the calling context is when C<out()> has not been used to specify
+any constraints on return values.
 
 =item C<< $contract->memoize >>
 
@@ -899,11 +935,14 @@ See Carp::Datum, Class::Agreement, Class::Contract.
 
 =head1 BUGS
 
+Sub::Contract does not respect calling context. This is a feature,
+not a bug. See 'Contracts and context' under 'Discussion'.
+
 See 'Issues with contract programming' under 'Discussion'.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.21 2008/05/24 20:40:34 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.24 2008/06/16 14:49:03 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 

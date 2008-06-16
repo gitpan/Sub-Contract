@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Pool - The pool of contracts
 #
-#   $Id: Pool.pm,v 1.8 2008/05/19 14:09:47 erwan_lemonnier Exp $
+#   $Id: Pool.pm,v 1.10 2008/06/16 14:49:03 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Pool;
@@ -16,6 +16,8 @@ use accessors qw( _contract_index
 		);
 
 use base qw(Exporter);
+
+our $VERSION = '0.07';
 
 our @EXPORT = ();
 our @EXPORT_OK = ('get_contract_pool');
@@ -33,11 +35,6 @@ sub get_contract_pool {
 	$pool->_contract_index({});
     }
     return $pool;
-}
-
-# make sure no one calls the constructor
-sub new {
-    croak "use get_contract_pool() instead of new()";
 }
 
 #---------------------------------------------------------------
@@ -128,17 +125,14 @@ sub find_contracts_matching {
     my $match = shift;
     my @contracts;
 
-#    use Data::Dumper;
-#    print "caller is: ".Dumper();
-
-# TODO: fix croak level is called from enable/disable_matching
+# TODO: fix croak level when called from enable/disable_matching
 #    local $Carp::CarpLevel = 2 if ((caller(1))[3] =~ /^Sub::Contract::Pool::(enable|disable)_contracts_matching$/);
 
     croak "method find_contracts_matching() expects a regular expression"
 	if (scalar @_ != 0 || !defined $match || ref $match ne '');
 
     while ( my ($name,$contract) = each %{$self->_contract_index} ) {
-	push @contracts, $contract if ($name =~ /$match/);
+	push @contracts, $contract if ($name =~ /^$match$/);
     }
 
     return @contracts;
@@ -159,25 +153,27 @@ Sub::Contract::Pool - A pool of all subroutine contracts
     my $pool = get_contract_pool();
 
     # disable all contracts in package My::Test
-    foreach my $contract ($pool->find_contracts_matching("^My::Test::[^:]$")) {
+    foreach my $contract ($pool->find_contracts_matching("My::Test::.*")) {
         $contract->disable;
     }
 
     # or simply
-    disable_contracts_matching("^My::Test::[^:]$");
+    $pool->disable_contracts_matching("My::Test::.*");
 
 =head1 DESCRIPTION
 
-Every subroutine contracts defined with Sub::Contract is
-automatically added to a pool of contracts.
+Every subroutine contract created with Sub::Contract is
+automatically added to a common pool of contracts.
+
+Contracts are instances of Sub::Contract.
 
 You can query this pool to retrieve contracts based on the
-name of the contractors (ie package name + subroutine name).
+qualified name of the contractors (ie package name + subroutine name).
 You can then modify, recompile, enable and disable contracts
 that you fetch from the pool, at any time during runtime.
 
 Sub::Contract::Pool uses a singleton pattern, giving you
-access to a unique contract pool.
+access to the common contract pool.
 
 =head1 API
 
@@ -186,11 +182,6 @@ access to a unique contract pool.
 =item C<< my $pool = get_contract_pool() >>;
 
 Return the contract pool.
-
-=item C<< new() >>
-
-Pool constructor, for internal use only.
-DO NOT USE NEW(), always use C<< get_contract_pool() >>.
 
 =item C<< $pool->list_all_contracts >>
 
@@ -212,19 +203,17 @@ Disable all the contracts registered in the pool.
 =item C<< $pool->enable_contracts_matching($regexp) >>
 
 Enable all the contracts registered in the pool whose contractor's
-fully qualified names matches the string C<$regexp>. C<regexp> works
-as for C<find_contracts_matching>.
+fully qualified names matches the pattern C</^$regexp$/>.
 
 =item C<< $pool->disable_contracts_matching($regexp) >>
 
 Disable all the contracts registered in the pool whose contractor's
-fully qualified names matches the string C<$regexp>. C<regexp> works
-as for C<find_contracts_matching>.
+fully qualified names matches the pattern C</^$regexp$/>.
 
 =item C<< $pool->find_contracts_matching($regexp) >>
 
 Find all the contracts registered in the pool and whose contractor's
-fully qualified names matches the string C<$regexp>.
+fully qualified names matches the pattern C</^$regexp$/>.
 
 =back
 
@@ -234,7 +223,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Pool.pm,v 1.8 2008/05/19 14:09:47 erwan_lemonnier Exp $
+$Id: Pool.pm,v 1.10 2008/06/16 14:49:03 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

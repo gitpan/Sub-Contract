@@ -1,12 +1,14 @@
+benchmark/bench.pl
+benchmark/ContractClosure.pm
 Changes
 lib/Sub/Contract.pm
 lib/Sub/Contract/ArgumentChecks.pm
 lib/Sub/Contract/Compiler.pm
+lib/Sub/Contract/Debug.pm
 lib/Sub/Contract/Memoizer.pm
 lib/Sub/Contract/Pool.pm
-lib/Sub/Contract/Debug.pm
 Makefile.PL
-MANIFEST
+MANIFEST			This list of files
 README
 t/01_test_compile.t
 t/02_test_basic_contract.t
@@ -16,6 +18,7 @@ t/05_test_def_and_undef_or.t
 t/06_test_context.t
 t/07_test_error_messages.t
 t/08_test_in_out_arguments_validation.t
+t/09_test_too_many_args.t
 t/10_test_in.t
 t/11_test_out.t
 t/12_test_pool.t
@@ -26,4 +29,7 @@ t/16_test_cache.t
 t/check_requirements.pm
 t/pod-coverage.t
 t/pod.t
+t/TODO_test_reentrance
+TODO
+TODO_prereq_makefile
 META.yml                                 Module meta-data (added by MakeMaker)

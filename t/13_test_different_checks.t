@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 13_test_different_checks.t,v 1.1 2008/04/29 10:44:22 erwan_lemonnier Exp $
+#   $Id: 13_test_different_checks.t,v 1.2 2008/06/16 13:55:35 erwan_lemonnier Exp $
 #
 
 # test that different contracts do not affect each other internally
@@ -36,7 +36,7 @@ is(is_c('d'),0,"is_a(d)");
 is(is_d('d'),1,"is_a(d)");
 is(is_d('b'),0,"is_a(b)");
 
-my @res;
+my $res;
 
 # functions to test
 contract('foo1')
@@ -49,8 +49,8 @@ contract('foo2')
     ->out(\&is_a)
     ->enable;
 
-sub foo1 { return @res; }
-sub foo2 { return @res; }
+sub foo1 { return $res; }
+sub foo2 { return $res; }
 
 # test foo_none
 my @tests = ( # args, result, error
@@ -69,21 +69,21 @@ my @tests = ( # args, result, error
 
 
 while (@tests) {
-    my $func = shift @tests;
-    my @args = @{ shift @tests };
-    @res = (shift @tests);
-    my $match = shift @tests;
+    my $func    = shift @tests;
+    my @args    = @{ shift @tests };
+    $res        = shift @tests;
+    my $match   = shift @tests;
     my $arg_str = join(",", map({ (defined $_)?$_:"undef" } @args));
 
     eval {
 	no strict 'refs';
-	my @s = $func->(@args);
+	my $s = $func->(@args);
     };
 
     if ($match) {
-	ok( $@ =~ /$match/, "$func dies on getting [$arg_str] and returning [".$res[0]."]" );
+	ok( $@ =~ /$match/, "$func dies on getting [$arg_str] and returning [".$res."]" );
     } else {
-	ok( !defined $@ || $@ eq '', "$func does not die on getting [$arg_str] and returning [".$res[0]."]" );
+	ok( !defined $@ || $@ eq '', "$func does not die on getting [$arg_str] and returning [".$res."]" );
     }
 }
 
