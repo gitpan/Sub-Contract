@@ -29,7 +29,5 @@ t/16_test_cache.t
 t/check_requirements.pm
 t/pod-coverage.t
 t/pod.t
-t/TODO_test_reentrance
 TODO
-TODO_prereq_makefile
 META.yml                                 Module meta-data (added by MakeMaker)

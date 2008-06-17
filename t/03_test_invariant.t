@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 03_test_invariant.t,v 1.5 2008/05/07 09:08:21 erwan_lemonnier Exp $
+#   $Id: 03_test_invariant.t,v 1.6 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 package My::Test;
@@ -44,13 +44,13 @@ contract('My::Test::foo')
 
 # void context
 eval { My::Test::foo(3) };
-ok(!defined $@ || $@ eq "", "invariant passes ($@)");
+ok(!defined $@ || $@ eq "", "invariant passes");
 
 eval { My::Test::foo(2) };
-ok( $@ =~ /invariant fails after calling subroutine \[My::Test::foo\]/, "invariant fails after");
+ok( $@ =~ /invariant fails after calling My::Test::foo/, "invariant fails after");
 
 eval { My::Test::foo(3) };
-ok( $@ =~ /invariant fails before calling subroutine \[My::Test::foo\]/, "invariant fails before");
+ok( $@ =~ /invariant fails before calling My::Test::foo/, "invariant fails before");
 
 # scalar context
 My::Test::set_zoulou(3);
@@ -58,10 +58,10 @@ eval { my $s = My::Test::foo(3) };
 ok(!defined $@ || $@ eq "", "invariant passes");
 
 eval { my $s = My::Test::foo(2) };
-ok( $@ =~ /invariant fails after calling subroutine \[My::Test::foo\]/, "invariant fails after");
+ok( $@ =~ /invariant fails after calling My::Test::foo/, "invariant fails after");
 
 eval { my $s = My::Test::foo(3) };
-ok( $@ =~ /invariant fails before calling subroutine \[My::Test::foo\]/, "invariant fails before");
+ok( $@ =~ /invariant fails before calling My::Test::foo/, "invariant fails before");
 
 # array context
 My::Test::set_zoulou(3);
@@ -69,10 +69,10 @@ eval { my @s = My::Test::foo(3) };
 ok(!defined $@ || $@ eq "", "invariant passes");
 
 eval { my @s = My::Test::foo(2) };
-ok( $@ =~ /invariant fails after calling subroutine \[My::Test::foo\]/, "invariant fails after");
+ok( $@ =~ /invariant fails after calling My::Test::foo/, "invariant fails after");
 
 eval { my @s = My::Test::foo(3) };
-ok( $@ =~ /invariant fails before calling subroutine \[My::Test::foo\]/, "invariant fails before");
+ok( $@ =~ /invariant fails before calling My::Test::foo/, "invariant fails before");
 
 
 

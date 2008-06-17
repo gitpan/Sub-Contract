@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 07_test_error_messages.t,v 1.4 2008/05/07 09:08:21 erwan_lemonnier Exp $
+#   $Id: 07_test_error_messages.t,v 1.5 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 package main;
@@ -82,23 +82,23 @@ ok($@ =~ /confessing now at .*07_test_error_messages.t line 72/, "condition conf
 # invariant before
 $c->reset->invariant( sub { return 0; } )->enable;
 eval { foo(); };
-ok($@ =~ /invariant fails before calling subroutine \[main::foo\] at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line 84\n.*at .*07_test_error_messages.t line 84/, "invariant fails before ($@)");
+ok($@ =~ /invariant fails before calling main::foo at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line 84\n.*at .*07_test_error_messages.t line 84/, "invariant fails before ($@)");
 
 # invariant after
 my $count = 0;
 $c->reset->invariant( sub { $count++; return $count != 1; } )->enable;
 eval { foo(); };
-ok($@ =~ /invariant fails before calling subroutine \[main::foo\] at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line/, "invariant fails before");
+ok($@ =~ /invariant fails before calling main::foo at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line/, "invariant fails before");
 
 # pre fails
 $c->reset->pre( sub { return 0; } )->enable;
 eval { foo(); };
-ok($@ =~ /pre-condition fails before calling subroutine \[main::foo\] at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line/, "pre condition fails");
+ok($@ =~ /pre-condition fails before calling main::foo at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line/, "pre condition fails");
 
 # post fails
 $c->reset->post( sub { return 0; } )->enable;
 eval { foo(); };
-ok($@ =~ /post-condition fails after calling subroutine \[main::foo\] at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line 100.*\n.*07_test_error_messages.t line 100/mg, "post condition fails");
+ok($@ =~ /post-condition fails after calling main::foo at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line 100.*\n.*07_test_error_messages.t line 100/mg, "post condition fails");
 
 # TODO: add more tests
 

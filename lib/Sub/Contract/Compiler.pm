@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.16 2008/06/16 14:49:03 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.17 2008/06/17 12:30:32 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
@@ -13,7 +13,7 @@ use Data::Dumper;
 use Sub::Contract::Debug qw(debug);
 use Sub::Name;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 #---------------------------------------------------------------
 #
@@ -109,22 +109,28 @@ sub enable {
     if ($cache) {
 	$str_cache_enter = sprintf q{
 	    if (!defined $Sub::Contract::wantarray) {
-		_croak "calling memoized contracted subroutine %s in void context";
+		_croak "calling memoized subroutine %s in void context";
 	    }
 
 	    if (grep({ ref $_; } @_)) {
-		_croak "contract cannot memoize result when input arguments contain references";
+		_croak "cannot memoize result of %s when input arguments contain references";
 	    }
 
 	    my $key = join(":", map( { (defined $_) ? $_ : "undef"; } ( ($Sub::Contract::wantarray) ? "array":"scalar"),@_));
 	    if ($cache->exists($key)) {
+		%s
                 if ($Sub::Contract::wantarray) {
 		    return @{$cache->get($key)};
 		} else {
 		    return $cache->get($key);
 		}
 	    }
-	}, $contractor;
+	    %s
+	},
+	$contractor,
+	$contractor,
+	(Sub::Contract::Memoizer::_is_profiler_on()) ? "Sub::Contract::Memoizer::_incr_hit(\"$contractor\");" : "",
+	(Sub::Contract::Memoizer::_is_profiler_on()) ? "Sub::Contract::Memoizer::_incr_miss(\"$contractor\");" : "";
 
 	$str_cache_return_array = sprintf q{
 	    $cache->set($key,\@Sub::Contract::results);
@@ -138,8 +144,6 @@ sub enable {
     # the context in which the contracted sub is called depends on
     # whether we have conditions on return values
     my $str_call;
-
-    # TODO: those if ($cref_pre/post) could be removed
 
     if (!defined $validator_out) {
 	# there are no constraints on return arguments so we can't assume
@@ -213,7 +217,7 @@ sub enable {
 		local $Sub::Contract::wantarray = wantarray;
 
 		if (defined $Sub::Contract::wantarray) {
-		    _croak "calling contracted subroutine %s in scalar or array context when its contract says it has no return values";
+		    _croak "calling %s in scalar or array context when its contract says it has no return values";
 		}
 
 		local @Sub::Contract::args = @_;
@@ -224,7 +228,7 @@ sub enable {
 		%s
 		@Sub::Contract::results = &$cref(@Sub::Contract::args);
 		%s
-		return ();
+		return;
 	    },
 	    $contractor,
 	    $str_call_pre,
@@ -250,7 +254,7 @@ sub enable {
 		# TODO: this code is not re-entrant. use local variables for args/wantarray/results. is local enough?
 
 		if ($Sub::Contract::wantarray) {
-		    _croak "calling contracted subroutine %s in array context when its contract says it returns a scalar";
+		    _croak "calling %s in array context when its contract says it returns a scalar";
 		}
 
 		local @Sub::Contract::args = @_;
@@ -384,7 +388,7 @@ sub is_enabled {
 sub _croak {
     my $msg = shift;
     local $Carp::CarpLevel = 2;
-    confess "$msg";
+    confess "contract failed: $msg";
 }
 
 # TODO: insert _run inline in compiled code
@@ -417,7 +421,7 @@ sub _generate_code {
     if (defined $check_invariant) {
 	$str_code .= sprintf q{
 	    if (!_run($%s,@Sub::Contract::args)) {
-		_croak "invariant fails %s calling subroutine [$%s]";
+		_croak "invariant fails %s calling $%s";
 	    }
 	}, $varnames->{invariant}, $state, $varnames->{contractor};
     }
@@ -427,7 +431,7 @@ sub _generate_code {
 	if ($state eq 'before') {
 	    $str_code .= sprintf q{
 		if (!_run($%s,@Sub::Contract::args)) {
-		    _croak "pre-condition fails before calling subroutine [$%s]";
+		    _croak "pre-condition fails before calling $%s";
 		}
 	    }, $varnames->{check}, $varnames->{contractor};
 	} else {
@@ -435,7 +439,7 @@ sub _generate_code {
 	    # so we can't validate the returned arguments. maybe we should issue a warning?
 	    $str_code .= sprintf q{
 		if (!_run($%s,@Sub::Contract::results)) {
-		    _croak "post-condition fails after calling subroutine [$%s]";
+		    _croak "post-condition fails after calling $%s";
 		}
 	    }, $varnames->{check}, $varnames->{contractor};
 	}
@@ -454,6 +458,26 @@ sub _generate_code {
 	    $str_code .= q{ my @args = @Sub::Contract::results; };
 	}
 
+	# if arguments are list style only, check their count
+	if (!$validator->has_hash_args) {
+	    my $count = scalar @list_checks;
+	    if ($state eq 'before') {
+		$str_code .= sprintf q{
+		    _croak "$%s expected %s input arguments but got ".(scalar @args) if (scalar @args != %s);
+		},
+		$varnames->{contractor},
+		($count == 0) ? "no" : "exactly $count",
+		$count;
+	    } else {
+		$str_code .= sprintf q{
+		    _croak "$%s should return %s values but returned ".(scalar @args) if (scalar @args != %s);
+		},
+		$varnames->{contractor},
+		($count == 0) ? "no" : "exactly $count",
+		$count;
+	    }
+	}
+
 	# do we have arguments to validate?
 	if ($validator->has_list_args || $validator->has_hash_args) {
 
@@ -462,9 +486,9 @@ sub _generate_code {
 	    for (my $i=0; $i<scalar(@list_checks); $i++) {
 		if (defined $list_checks[$i]) {
 		    $str_code .= sprintf q{
-			_croak "%s argument %s of [$%s] fails its contract constraint" if (!_run($%s[%s], $args[0]));
+			_croak "%s number %s of $%s fails its constraint: ".((defined $args[0])?$args[0]:"undef") if (!_run($%s[%s], $args[0]));
 		    },
-		    ($state eq 'before')?'input':'return',
+		    ($state eq 'before') ? 'input argument' : 'return value',
 		    $pos,
 		    $varnames->{contractor},
 		    $varnames->{list_check},
@@ -482,20 +506,23 @@ sub _generate_code {
 
 		# croak if odd number of elements
 		$str_code .= sprintf q{
-		    _croak "odd number of hash-style %s arguments in [$%s]" if (scalar @args %% 2);
+		    _croak "odd number of hash-style %s in $%s" if (scalar @args %% 2);
 		    my %%args = @args;
 		},
-		($state eq 'before')?'input':'return',
+		($state eq 'before') ? 'input arguments' : 'return values',
 		$varnames->{contractor};
 
 		# check the value of each key in the argument hash
 		while (my ($key,$check) = each %hash_checks) {
 		    if (defined $check) {
 			$str_code .= sprintf q{
-			    _croak "%s argument of [$%s] for key \'%s\' fails its contract constraint" if (!_run($%s{%s}, $args{%s}));
+			    _croak "%s of $%s with key \'%s\' fails its constraint: %s = ".((defined $args{%s})?$args{%s}:"undef") if (!_run($%s{%s}, $args{%s}));
 			},
-			($state eq 'before')?'input':'return',
+			($state eq 'before') ? 'input argument' : 'return value',
 			$varnames->{contractor},
+			$key,
+			$key,
+			$key,
 			$key,
 			$varnames->{hash_check},
 			$key,
@@ -512,12 +539,10 @@ sub _generate_code {
 	# there should be no arguments left
 	if ($validator->has_hash_args) {
 	    $str_code .= sprintf q{
-		_croak "function [$%s] %s: ".join(" ",keys %%args) if (%%args);
-	    }, $varnames->{contractor}, ($state eq 'before')?'got unexpected input argument(s)':'returned unexpected result value(s)';
-	} else {
-	    $str_code .= sprintf q{
-		_croak "function [$%s] %s" if (@args);
-	    }, $varnames->{contractor}, ($state eq 'before')?'got unexpected input argument(s)':'returned unexpected result value(s)';
+		_croak "$%s %s: ".join(" ",keys %%args) if (%%args);
+	    },
+	    $varnames->{contractor},
+	    ($state eq 'before') ? 'got unexpected hash-style input arguments' : 'returned unexpected hash-style return values';
 	}
     }
 
@@ -570,7 +595,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.16 2008/06/16 14:49:03 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.17 2008/06/17 12:30:32 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

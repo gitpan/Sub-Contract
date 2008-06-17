@@ -6,30 +6,37 @@ use Benchmark qw(:all);
 use Sub::Contract;
 use ContractClosure;
 
-# TODO: copy pluto version to t/, use Test::Benchmark, bench even hash args and mixes, bench cache
-
-sub test { return 1 }
-
-sub foo1 { return @_ }
-
-sub foo2 { return @_ }
-
-sub foo3 {
-    my ($a) = shift @_;
-    die "bleh" if (@_);
-    die "bloo" if (!defined $a);
-    return $a;
+sub is_integer {
+    my $i = shift;
+    return 0 if (!defined $i);
+    return 0 if (ref $i ne "");
+    return 0 if ($i !~ /^\d+$/);
+    return 1;
 }
 
-Sub::Contract::contract('foo1')->in(\&test)->out(\&test)->enable;
+sub foo1 { return $_[0] }
+
+sub foo2 { return $_[0] }
+
+sub foo3 {
+    my $a = shift;
+    is_integer($a);
+    my $b = $a;
+    is_integer($b);
+    return $b;
+}
+
+Sub::Contract::contract('foo1')->in(\&is_integer)->out(\&is_integer)->enable;
 
 ContractClosure::contract('foo2',
-			  in => { defined => 1,
-				  check => [ \&test ],
-			      },
-    out => { defined => 1,
-	     check => [ \&test ],
-	 },
+			  in => {
+			      defined => 1,
+			      check => [ \&is_integer ],
+			  },
+			  out => {
+			      defined => 1,
+			      check => [ \&is_integer ],
+			  },
     );
 
 timethese(1000000, {

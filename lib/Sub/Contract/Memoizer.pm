@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
 #
-#   $Id: Memoizer.pm,v 1.5 2008/06/16 14:49:03 erwan_lemonnier Exp $
+#   $Id: Memoizer.pm,v 1.7 2008/06/17 12:33:06 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Memoizer;
@@ -15,33 +15,86 @@ use Symbol;
 
 use Cache::Memory;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 #---------------------------------------------------------------
 #
 #
-#   Memoization
+# the cache profiler
 #
 #
 #---------------------------------------------------------------
+
+# turn on cache statistics
+my $CACHE_STATS_ON = 0;
+if (defined $ENV{PERL5SUBCONTRACTSTATS} && $ENV{PERL5SUBCONTRACTSTATS} eq '1') {
+    $CACHE_STATS_ON = 1;
+}
+
+my %CACHE_STATS;
+
+# for the compiler to know if the cache profiler is on
+sub _is_profiler_on {
+    return $CACHE_STATS_ON;
+}
+
+# private functions used to update stat counters
+sub _incr_miss {
+    $CACHE_STATS{$_[0]}->{calls}++;
+}
+
+sub _incr_hit {
+    $CACHE_STATS{$_[0]}->{calls}++;
+    $CACHE_STATS{$_[0]}->{hits}++;
+}
+
+
+# show cache statistics, if any
+END {
+    if ($CACHE_STATS_ON) {
+	print "------------------------------------------------------\n";
+	print "Statistics from Sub::Contract's function result cache:\n";
+	foreach my $func (sort keys %CACHE_STATS) {
+	    my $hits = $CACHE_STATS{$func}->{hits};
+	    my $calls = $CACHE_STATS{$func}->{calls};
+	    if ($calls) {
+		my $rate = int(1000*$hits/$calls)/10;
+		print "  ".sprintf("%-60s:",$func)."  $rate % hits (calls: $calls, hits: $hits)\n";
+	    }
+	}
+	print "------------------------------------------------------\n";
+    }
+}
+
+#---------------------------------------------------------------
+#
+#
+# memoization
+#
+#
+#---------------------------------------------------------------
+
 
 #
 # the cache part
 #
 
-# TODO: implement stats => 1
 # TODO: implement file cache
 # TODO: implement expiry time
 
 sub cache {
     my ($self,%args) = @_;
-    my $size = delete $args{size} || 10000000; # default size = 10mb
+    my $size = delete $args{size} || 10485760; # default size = 10mb
 
     croak "cache() got unknown arguments: ".Dumper(%args) if (%args);
     croak "size should be a number" if (!defined $size || $size !~ /^\d+$/);
 
     # NOTE: $contract->reset() deletes this cache
     $self->{cache} = new Cache::Memory( size_limit => $size );
+
+    if ($CACHE_STATS_ON && !exists $CACHE_STATS{$self->contractor}) {
+	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0 };
+    }
 
     return $self;
 }
@@ -91,6 +144,11 @@ sub add_to_cache {
     my $key = _make_cache_key(@{$args});
     $self->{cache}->set($key,$results);
 
+    if ($CACHE_STATS_ON) {
+	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0 };
+    }
+
+
     return $self;
 }
 
@@ -120,23 +178,13 @@ See 'Sub::Contract'.
 
 =item C<< $contract->cache([size => $max_size]) >>
 
-TODO
-
 =item C<< $contract->has_cache([size => $max_size]) >>
-
-TODO
 
 =item C<< $contract->get_cache >>
 
-Returns the instance of Cache used by this contract.
-
 =item C<< $contract->clear_cache >>
 
-TODO
-
 =item C<< $contract->add_to_cache(\@args, \@results) >>
-
-TODO
 
 =back
 
@@ -146,7 +194,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Memoizer.pm,v 1.5 2008/06/16 14:49:03 erwan_lemonnier Exp $
+$Id: Memoizer.pm,v 1.7 2008/06/17 12:33:06 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

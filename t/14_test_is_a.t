@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 14_test_is_a.t,v 1.1 2008/05/12 10:59:32 erwan_lemonnier Exp $
+#   $Id: 14_test_is_a.t,v 1.2 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 package Foo;
@@ -58,9 +58,9 @@ my $foobar = new Foo::Bar;
 my @tests = (
 	     [ a => $foo ], undef,
 	     [ a => $foo, b => undef ], undef,
-	     [ a => $foo, b => 'boo' ], "key 'b' fails its contract",
-	     [ a => 'boo', b => undef ], "key 'a' fails its contract",
-	     [ b => undef ], "key 'a' fails its contract",
+	     [ a => $foo, b => 'boo' ], "key 'b' fails its constraint",
+	     [ a => 'boo', b => undef ], "key 'a' fails its constraint",
+	     [ b => undef ], "key 'a' fails its constraint",
 	     );
 
 # test sub

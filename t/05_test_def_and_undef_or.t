@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 05_test_def_and_undef_or.t,v 1.1 2008/05/19 13:58:27 erwan_lemonnier Exp $
+#   $Id: 05_test_def_and_undef_or.t,v 1.2 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 package Bob;
@@ -80,8 +80,8 @@ test_contract(
 	      [ a => 1, b => 4 ], 5, undef,
 	      [ b => 1, a => 4 ], 5, undef,
 	      [ a => undef, b => 4 ], 4, undef,
-	      [ a => undef, b => undef ], undef, "input argument of .Bob::add. for key 'b' fails its contract constraint",
-	      [ a => 'abc', b => undef ], undef, "input argument of .Bob::add. for key 'a' fails its contract constraint",
+	      [ a => undef, b => undef ], undef, "input argument of Bob::add with key 'b' fails its constraint",
+	      [ a => 'abc', b => undef ], undef, "input argument of Bob::add with key 'a' fails its constraint",
 	      );
 
 

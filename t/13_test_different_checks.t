@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 13_test_different_checks.t,v 1.2 2008/06/16 13:55:35 erwan_lemonnier Exp $
+#   $Id: 13_test_different_checks.t,v 1.3 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 # test that different contracts do not affect each other internally
@@ -58,13 +58,13 @@ my @tests = ( # args, result, error
 	      foo2 => ['b','d'], 'a', undef,
 
 	      # errors
-	      foo2 => ['a','c'], 'b', "input argument 1 of .main::foo2.",
-	      foo2 => ['b','c'], 'b', "input argument 2 of .main::foo2.",
-	      foo2 => ['b','d'], 'd', "return argument 1 of .main::foo2.",
+	      foo2 => ['a','c'], 'b', "input argument number 1 of main::foo2",
+	      foo2 => ['b','c'], 'b', "input argument number 2 of main::foo2",
+	      foo2 => ['b','d'], 'd', "return value number 1 of main::foo2",
 
-	      foo1 => ['b','d'], 'a', "input argument 1 of .main::foo1.",
-	      foo1 => ['a','d'], 'a', "input argument 2 of .main::foo1.",
-	      foo1 => ['a','c'], 'a', "return argument 1 of .main::foo1.",
+	      foo1 => ['b','d'], 'a', "input argument number 1 of main::foo1",
+	      foo1 => ['a','d'], 'a', "input argument number 2 of main::foo1",
+	      foo1 => ['a','c'], 'a', "return value number 1 of main::foo1",
 	     );
 
 

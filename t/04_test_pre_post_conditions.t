@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 04_test_pre_post_conditions.t,v 1.7 2008/05/07 09:08:21 erwan_lemonnier Exp $
+#   $Id: 04_test_pre_post_conditions.t,v 1.8 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 package main;
@@ -49,7 +49,7 @@ eval { foo('bob'); };
 ok(!defined $@ || $@ eq "", "pre condition passes");
 
 eval { foo('bilou') };
-ok( $@ =~ /pre-condition fails before calling subroutine \[main::foo\]/, "pre condition fails");
+ok( $@ =~ /pre-condition fails before calling main::foo/, "pre condition fails");
 
 eval { foo('please die') };
 ok( $@ =~ /dying now at .*04_test_pre_post_conditions.t line 54/, "pre condition croaks");
@@ -80,7 +80,7 @@ is($Sub::Contract::wantarray,undef, "\$Sub::Contract::wantarray is undef");
 
 @result = (4,5,6);
 eval { @res = foo('bilou'); };
-ok($@ =~ /post-condition fails after calling subroutine \[main::foo\]/, "post condition failed");
+ok($@ =~ /post-condition fails after calling main::foo/, "post condition failed");
 
 my $res;
 @result = (1,2);

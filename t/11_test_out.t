@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 11_test_out.t,v 1.4 2008/06/16 13:52:40 erwan_lemonnier Exp $
+#   $Id: 11_test_out.t,v 1.5 2008/06/17 11:31:42 erwan_lemonnier Exp $
 #
 
 package My::Test;
@@ -87,39 +87,39 @@ my @tests = (
 	     # test no arguments
 	     foo_none => [],
 	     undef,
-	     "calling contracted subroutine main::foo_none in scalar or array context",
-	     "calling contracted subroutine main::foo_none in scalar or array context",
+	     "calling main::foo_none in scalar or array context",
+	     "calling main::foo_none in scalar or array context",
 
  	     foo_none => [ 1 ],
-	     "function .main::foo_none. returned unexpected result value.s.",
-	     "calling contracted subroutine main::foo_none in scalar or array context",
-	     "calling contracted subroutine main::foo_none in scalar or array context",
+	     "main::foo_none should return no values but returned 1",
+	     "calling main::foo_none in scalar or array context",
+	     "calling main::foo_none in scalar or array context",
 
  	     foo_none => [ undef ],
-	     "function .main::foo_none. returned unexpected result value.s.",
-	     "calling contracted subroutine main::foo_none in scalar or array context",
-	     "calling contracted subroutine main::foo_none in scalar or array context",
+	     "main::foo_none should return no values but returned 1",
+	     "calling main::foo_none in scalar or array context",
+	     "calling main::foo_none in scalar or array context",
 
  	     # test 1 argument
  	     foo_one => [],
-	     "return argument 1 of .main::foo_one. fails its contract constraint",
-	     "return argument 1 of .main::foo_one. fails its contract constraint",
-	     "calling contracted subroutine main::foo_one in array context when its contract says it returns a scalar",
+	     "return value number 1 of main::foo_one fails its constraint",
+	     "return value number 1 of main::foo_one fails its constraint",
+	     "calling main::foo_one in array context when its contract says it returns a scalar",
 
  	     foo_one => [ 2 ],
 	     undef,
 	     undef,
-	     "calling contracted subroutine main::foo_one in array context when its contract says it returns a scalar",
+	     "calling main::foo_one in array context when its contract says it returns a scalar",
 
  	     foo_one => [ 'abc' ],
-	     "return argument 1 of .main::foo_one. fails its contract constraint",
-	     "return argument 1 of .main::foo_one. fails its contract constraint",
-	     "calling contracted subroutine main::foo_one in array context when its contract says it returns a scalar",
+	     "return value number 1 of main::foo_one fails its constraint: abc",
+	     "return value number 1 of main::foo_one fails its constraint: abc",
+	     "calling main::foo_one in array context when its contract says it returns a scalar",
 
  	     foo_one => [ undef ],
-	     "return argument 1 of .main::foo_one. fails its contract constraint",
-	     "return argument 1 of .main::foo_one. fails its contract constraint",
-	     "calling contracted subroutine main::foo_one in array context when its contract says it returns a scalar",
+	     "return value number 1 of main::foo_one fails its constraint: undef",
+	     "return value number 1 of main::foo_one fails its constraint: undef",
+	     "calling main::foo_one in array context when its contract says it returns a scalar",
 
  	     # test array arguments
  	     foo_array => [ 1234, undef, 0 ], undef, undef, undef,
@@ -127,102 +127,102 @@ my @tests = (
 	     foo_array => [ 3485923847, 'abc', 0 ], undef,undef,undef,
 
 	     foo_array => [ 1234, undef, 1 ],
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
+	     "return value number 3 of main::foo_array fails its constraint",
+	     "return value number 3 of main::foo_array fails its constraint",
+	     "return value number 3 of main::foo_array fails its constraint",
 
 	     foo_array => [ 1234, undef, undef ],
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
+	     "return value number 3 of main::foo_array fails its constraint",
+	     "return value number 3 of main::foo_array fails its constraint",
+	     "return value number 3 of main::foo_array fails its constraint",
 
 	     foo_array => [ 'abc', undef, 0 ],
-	     "return argument 1 of .main::foo_array. fails its contract constraint",
-	     "return argument 1 of .main::foo_array. fails its contract constraint",
-	     "return argument 1 of .main::foo_array. fails its contract constraint",
+	     "return value number 1 of main::foo_array fails its constraint",
+	     "return value number 1 of main::foo_array fails its constraint",
+	     "return value number 1 of main::foo_array fails its constraint",
 
 	     foo_array => [ 1234, undef, 0, undef ],
-	     "function .main::foo_array. returned unexpected result value.s.",
-	     "function .main::foo_array. returned unexpected result value.s.",
-	     "function .main::foo_array. returned unexpected result value.s.",
+	     "main::foo_array should return exactly 3 values but returned 4",
+	     "main::foo_array should return exactly 3 values but returned 4",
+	     "main::foo_array should return exactly 3 values but returned 4",
 
  	     foo_array => [ 1234, undef ],
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
+	     "main::foo_array should return exactly 3 values but returned 2",
+	     "main::foo_array should return exactly 3 values but returned 2",
+	     "main::foo_array should return exactly 3 values but returned 2",
 
  	     foo_array => [ 1234 ],
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
-	     "return argument 3 of .main::foo_array. fails its contract constraint",
+	     "main::foo_array should return exactly 3 values but returned 1",
+	     "main::foo_array should return exactly 3 values but returned 1",
+	     "main::foo_array should return exactly 3 values but returned 1",
 
  	     foo_array => [ ],
-	     "return argument 1 of .main::foo_array. fails its contract constraint",
-	     "return argument 1 of .main::foo_array. fails its contract constraint",
-	     "return argument 1 of .main::foo_array. fails its contract constraint",
+	     "main::foo_array should return exactly 3 values but returned 0",
+	     "main::foo_array should return exactly 3 values but returned 0",
+	     "main::foo_array should return exactly 3 values but returned 0",
 
  	     # test hash arguments
  	     foo_hash => [ a => 0, b => 128376 ], undef,undef,undef,
  	     foo_hash => [ b => 128376, a => 0 ], undef,undef,undef,
 
  	     foo_hash => [ b => 128376, a => 0, c => 0 ],
-	     "function .main::foo_hash. returned unexpected result value.s.",
-	     "function .main::foo_hash. returned unexpected result value.s.",
-	     "function .main::foo_hash. returned unexpected result value.s.",
+	     "main::foo_hash returned unexpected hash-style return values: c",
+	     "main::foo_hash returned unexpected hash-style return values: c",
+	     "main::foo_hash returned unexpected hash-style return values: c",
 
  	     foo_hash => [ b => 128376, a => 0, 0 ],
-	     "odd number of hash-style return arguments in .main::foo_hash.",
-	     "odd number of hash-style return arguments in .main::foo_hash.",
-	     "odd number of hash-style return arguments in .main::foo_hash.",
+	     "odd number of hash-style return values in main::foo_hash",
+	     "odd number of hash-style return values in main::foo_hash",
+	     "odd number of hash-style return values in main::foo_hash",
 
  	     foo_hash => [ b => 128376, a => 1 ],
-	     "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
+	     "return value of main::foo_hash with key \'a\' fails its constraint",
+	     "return value of main::foo_hash with key \'a\' fails its constraint",
+	     "return value of main::foo_hash with key \'a\' fails its constraint",
 
  	     foo_hash => [ b => 128376, a => undef ],
-	     "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'a\' fails its contract constraint",
+	     "return value of main::foo_hash with key \'a\' fails its constraint",
+	     "return value of main::foo_hash with key \'a\' fails its constraint",
+	     "return value of main::foo_hash with key \'a\' fails its constraint",
 
  	     foo_hash => [ b => 'abc', a => 0 ],
-	     "return argument of .main::foo_hash. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'b\' fails its contract constraint",
+	     "return value of main::foo_hash with key \'b\' fails its constraint",
+	     "return value of main::foo_hash with key \'b\' fails its constraint",
+	     "return value of main::foo_hash with key \'b\' fails its constraint",
 
  	     foo_hash => [ b => [0], a => 0 ],
-	     "return argument of .main::foo_hash. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_hash. for key \'b\' fails its contract constraint",
+	     "return value of main::foo_hash with key \'b\' fails its constraint",
+	     "return value of main::foo_hash with key \'b\' fails its constraint",
+	     "return value of main::foo_hash with key \'b\' fails its constraint",
 
 	     # test mixed arguments
 	     foo_mixed => [ 0, 123, a => 0, b => 128376 ], undef,undef,undef,
 	     foo_mixed => [ 'abc', 654, a => 0, b => 1 ], undef,undef,undef,
 
 	     foo_mixed => [ undef, 'abc', a => 0, b => 1 ],
-	     "return argument 2 of .main::foo_mixed. fails its contract constraint",
-	     "return argument 2 of .main::foo_mixed. fails its contract constraint",
-	     "return argument 2 of .main::foo_mixed. fails its contract constraint",
+	     "return value number 2 of main::foo_mixed fails its constraint",
+	     "return value number 2 of main::foo_mixed fails its constraint",
+	     "return value number 2 of main::foo_mixed fails its constraint",
 
 	     foo_mixed => [ undef, 1, a => 1, b => 1 ],
-	     "return argument of .main::foo_mixed. for key \'a\' fails its contract constraint",
-	     "return argument of .main::foo_mixed. for key \'a\' fails its contract constraint",
-	     "return argument of .main::foo_mixed. for key \'a\' fails its contract constraint",
+	     "return value of main::foo_mixed with key \'a\' fails its constraint: a = 1",
+	     "return value of main::foo_mixed with key \'a\' fails its constraint: a = 1",
+	     "return value of main::foo_mixed with key \'a\' fails its constraint: a = 1",
 
 	     foo_mixed => [ undef, 1, a => 0, b => undef ],
-	     "return argument of .main::foo_mixed. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_mixed. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_mixed. for key \'b\' fails its contract constraint",
+	     "return value of main::foo_mixed with key \'b\' fails its constraint: b = undef",
+	     "return value of main::foo_mixed with key \'b\' fails its constraint: b = undef",
+	     "return value of main::foo_mixed with key \'b\' fails its constraint: b = undef",
 
 	     foo_mixed => [ undef, 1, a => 0, b => undef, 12 ],
-	     "odd number of hash-style return arguments in .main::foo_mixed.",
-	     "odd number of hash-style return arguments in .main::foo_mixed.",
-	     "odd number of hash-style return arguments in .main::foo_mixed.",
+	     "odd number of hash-style return values in main::foo_mixed",
+	     "odd number of hash-style return values in main::foo_mixed",
+	     "odd number of hash-style return values in main::foo_mixed",
 
 	     foo_mixed => [ undef, 1, a => 0 ],
-	     "return argument of .main::foo_mixed. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_mixed. for key \'b\' fails its contract constraint",
-	     "return argument of .main::foo_mixed. for key \'b\' fails its contract constraint",
+	     "return value of main::foo_mixed with key \'b\' fails its constraint: b = undef",
+	     "return value of main::foo_mixed with key \'b\' fails its constraint: b = undef",
+	     "return value of main::foo_mixed with key \'b\' fails its constraint: b = undef",
 	     );
 
 while (@tests) {
