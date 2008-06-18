@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 16_test_cache.t,v 1.3 2008/06/17 12:10:58 erwan_lemonnier Exp $
+#   $Id: 16_test_cache.t,v 1.4 2008/06/18 14:02:31 erwan_lemonnier Exp $
 #
 
 package main;
@@ -14,7 +14,7 @@ use Data::Dumper;
 BEGIN {
 
     use check_requirements;
-    plan tests => 24;
+    plan tests => 27;
 
     use_ok("Sub::Contract",'contract');
 };
@@ -95,5 +95,25 @@ ok($@ =~ /cannot memoize result of main::foo_scalar when input arguments contain
 # wrong context
 eval { foo_scalar(3,3); };
 ok($@ =~ /calling memoized subroutine main::foo_scalar in void context/, "contract fail when void context");
+
+# test an early bug, in which different subs shared the same cache
+contract("pif")->cache->enable;
+contract("paf")->cache->enable;
+
+sub pif {
+    return (a => 1, b => 2);
+}
+
+sub paf {
+    return (a => "boum");
+}
+
+my %r1 = pif(1,2,3);
+is_deeply(\%r1, {a => 1, b => 2}, "calling pif once");
+%r1 = pif(1,2,3);
+is_deeply(\%r1, {a => 1, b => 2}, "calling pif twice");
+
+%r1 = paf(1,2,3);
+is_deeply(\%r1, {a => "boum"}, "calling paf. got paf's answer and not pif's");
 
 # TODO: fill cache heavily

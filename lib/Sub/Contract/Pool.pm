@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Pool - The pool of contracts
 #
-#   $Id: Pool.pm,v 1.11 2008/06/17 12:30:33 erwan_lemonnier Exp $
+#   $Id: Pool.pm,v 1.12 2008/06/18 14:02:31 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Pool;
@@ -17,7 +17,7 @@ use accessors qw( _contract_index
 
 use base qw(Exporter);
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 our @EXPORT = ();
 our @EXPORT_OK = ('get_contract_pool');
@@ -223,7 +223,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Pool.pm,v 1.11 2008/06/17 12:30:33 erwan_lemonnier Exp $
+$Id: Pool.pm,v 1.12 2008/06/18 14:02:31 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

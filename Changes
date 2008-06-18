@@ -39,3 +39,6 @@ Revision history for Perl extension Sub::Contract
         - pod++
         - better error messages
         - implemented cache profiler
+
+0.09  2008-06-18
+        - fix shared cache bug

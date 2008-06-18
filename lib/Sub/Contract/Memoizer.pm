@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
 #
-#   $Id: Memoizer.pm,v 1.7 2008/06/17 12:33:06 erwan_lemonnier Exp $
+#   $Id: Memoizer.pm,v 1.8 2008/06/18 14:02:31 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Memoizer;
@@ -15,7 +15,7 @@ use Symbol;
 
 use Cache::Memory;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 #---------------------------------------------------------------
 #
@@ -90,7 +90,7 @@ sub cache {
     croak "size should be a number" if (!defined $size || $size !~ /^\d+$/);
 
     # NOTE: $contract->reset() deletes this cache
-    $self->{cache} = new Cache::Memory( size_limit => $size );
+    $self->{cache} = new Cache::Memory( namespace => $self->contractor, size_limit => $size );
 
     if ($CACHE_STATS_ON && !exists $CACHE_STATS{$self->contractor}) {
 	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0 };
@@ -194,7 +194,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Memoizer.pm,v 1.7 2008/06/17 12:33:06 erwan_lemonnier Exp $
+$Id: Memoizer.pm,v 1.8 2008/06/18 14:02:31 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.26 2008/06/17 12:30:32 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.28 2008/06/18 14:22:47 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -28,7 +28,7 @@ our @EXPORT_OK = qw( contract
 		     is_a
 		     );
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -450,6 +450,10 @@ Sub::Contract doesn't aim at implementing all the properties of contract
 programming, but focuses on some that have proven handy in practice
 and tries to do it with a simple syntax.
 
+Perl also support calling contexts which can lead to tricky bugs. Sub::Contract
+attempts to constrain even the calling context of contracted subroutines so
+it match with what the subroutine is expected to return.
+
 With Sub::Contract you can specify a contract per subroutine (or method).
 A contract is a set of constraints on the subroutine's input arguments, its
 returned values, or on a state before and after being called. If one
@@ -578,6 +582,7 @@ meaning that your classes are implemented inside the contract, rather than havin
 implementation and contract definition as 2 distinct code areas.
 
 Class::Contract does not provide memoization from within the contract.
+Class::Contract does not provide calling context constraining.
 
 =item * Sub::Contract VERSUS Class::Agreement
 
@@ -585,6 +590,7 @@ Class::Agreement offers the same functionality as Sub::Contract, though with a s
 heavier syntax if you are only seeking to emulate strong typing at runtime.
 
 Class::Agreement does not provide memoization from within the contract.
+Class::Agreement does not provide calling context constraining.
 
 =back
 
@@ -761,39 +767,62 @@ Same as C<in> but for validating return arguments one by one. Return the contrac
 
 The syntax of C<@checks> is the same as for C<in()>.
 
-The content of C<@checks> defines the context in which the contractor
-is called, according to the following cases:
+The content of C<@checks> gives us enough information to determine
+which calling context the contractor should be called in. Sub::Contract
+will constrain the calling context according to the following rules:
 
-    # case 1: out() is not specified
-    # in that case, no constraints are applied on the return
-    # values, and the subroutine's calling context is respected
+    # Case 1: out() is not specified.
+    #
+    # Sub::Contract cannot assume anything about which calling context
+    # foo() should be called in. Therefore, no constraints are applied
+    # on the calling context. The contract calls foo() with the same
+    # context as it was itself called in.
 
     contract("foo")->enable;
 
 
-    # case 2: no return argument expected
-    # the contract fails if foo returns something
-    # the contract will always call foo in array context, independently
-    # of the original calling context
+    # Case 2: out() is specified with an empty @checks list.
+    #
+    # Sub::Contract assumes that foo() is supposed to return nothing
+    # and should be called in void context. If foo() gets called in
+    # array or scalar context, foo's contract will therefore emit an
+    # error (die). If foo() is called in void context, the contract
+    # calls foo() in array context and verifies that foo() indeed
+    # returned nothing.
+    #
+    # NOTE: in that case, foo() is always called in array context,
+    # independently of the context in which the contract was called.
 
     contract("foo")->out()->enable;
 
 
-    # case 3: out() defines one constraint
-    # this implies that foo is expected to return a scalar.
-    # therefore, foo's contract will send an error if foo gets called in array context.
-    # the contract will always call foo in scalar context, even if
-    # foo was originally called void context.
+    # Case 3: out() defines one constraint.
+    #
+    # Sub::Contract assumes that foo() is supposed to return a scalar.
+    # If foo() gets called in array context, the contract will
+    # therefore emit an error. If foo() is called in scalar or void
+    # context, the contract calls foo() in scalar context and checks
+    # the returned value against the constraint.
+    #
+    # NOTE: in that case, foo() is always called in scalar context,
+    # independently of the context in which the contract was called.
 
     contract("foo")->out(\&is_integer)->enable;
 
 
-    # case 4: out() defines more than one constraints
-    # this implies that foo is expected to return a list of values.
-    # the contract then always calls foo in array context, even if
-    # foo was called in scalar or void context.
+    # Case 4: out() defines more than one constraints.
+    #
+    # Sub::Contract assumes that foo() is supposed to return a list
+    # of values. The contract then always calls foo in array context,
+    # validate its return values against their respective constraints,
+    # and passes back the result.
+    #
+    # NOTE: in that case, foo() is always called in array context,
+    # independently of the context in which the contract was called.
 
-    contract("foo")->out(\&is_integer)->enable;
+    contract("foo")->out(\&is_integer,\&is_date,\&is_status)->enable;
+
+    contract("foo")->out(a => \&is_integer, b => \&is_date)->enable;
 
 As you can see from the cases above, the only situation when Sub::Contract
 respects the calling context is when C<out()> has not been called to specify
@@ -1028,7 +1057,7 @@ Please submit bugs to rt.cpan.org.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.26 2008/06/17 12:30:32 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.28 2008/06/18 14:22:47 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 

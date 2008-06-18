@@ -7,6 +7,7 @@ lib/Sub/Contract/Compiler.pm
 lib/Sub/Contract/Debug.pm
 lib/Sub/Contract/Memoizer.pm
 lib/Sub/Contract/Pool.pm
+LICENSE
 Makefile.PL
 MANIFEST			This list of files
 README
