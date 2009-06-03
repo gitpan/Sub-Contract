@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 14_test_is_a.t,v 1.2 2008/06/17 11:31:42 erwan_lemonnier Exp $
+#   $Id: 23_test_is_a.t,v 1.1 2009/06/03 04:40:12 erwan_lemonnier Exp $
 #
 
 package Foo;

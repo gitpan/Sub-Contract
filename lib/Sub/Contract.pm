@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.28 2008/06/18 14:22:47 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.33 2009/06/03 18:54:05 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -25,10 +25,15 @@ our @EXPORT = qw();
 our @EXPORT_OK = qw( contract
 		     undef_or
 		     defined_and
+                     is_defined_and
+                     is_undefined_or
+                     is_not
+                     is_one_of
+                     is_all_of
 		     is_a
 		     );
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -50,12 +55,14 @@ sub contract {
 
 #---------------------------------------------------------------
 #
-#   undef_or - take a test coderef and returns a test coderef that
-#              passes if argument is undefined or validate the coderef
 #
+#   functions to combine constraints
+#
+#
+#---------------------------------------------------------------
 
-sub undef_or {
-    croak "undef_or() expects a coderef" if (scalar @_ != 1 || !defined $_[0] || ref $_[0] ne 'CODE');
+sub is_undefined_or {
+    croak "is_undefined_or() expects a coderef" if (scalar @_ != 1 || !defined $_[0] || ref $_[0] ne 'CODE');
     my $test = shift;
     return sub {
 	return 1 if (!defined $_[0]);
@@ -63,14 +70,11 @@ sub undef_or {
     };
 }
 
-#---------------------------------------------------------------
-#
-#   defined_and - take a test coderef and returns a test coderef that
-#                 passes if argument is defined and validate the coderef
-#
+# backward compatibility
+*undef_or = *is_undefined_or;
 
-sub defined_and {
-    croak "defined_and() expects a coderef" if (scalar @_ != 1 || !defined $_[0] || ref $_[0] ne 'CODE');
+sub is_defined_and {
+    croak "is_defined_and() expects a coderef" if (scalar @_ != 1 || !defined $_[0] || ref $_[0] ne 'CODE');
     my $test = shift;
     return sub {
 	return 0 if (!defined $_[0]);
@@ -78,11 +82,52 @@ sub defined_and {
     };
 }
 
-#---------------------------------------------------------------
-#
-#   is_a - take a package name and return a ref to a sub that
-#          verifies that its argument is an instance of this package
-#
+# backward compatibility
+*defined_and = *is_defined_and;
+
+sub is_not {
+    croak "is_not() expects a coderef" if (scalar @_ != 1 || !defined $_[0] || ref $_[0] ne 'CODE');
+    my $test = shift;
+    return sub {
+	return !&$test(@_);
+    };
+}
+
+sub is_one_of {
+    my @tests = @_;
+    croak "is_one_of() expects at least two coderefs" if (scalar @tests < 2);
+    foreach my $test (@tests) {
+	croak "is_one_of() expects only coderefs" if (!defined $test || ref $test ne 'CODE');
+    }
+
+    return sub {
+	my @args = @_;
+	foreach my $test (@tests) {
+	    if (&$test(@args)) {
+		return 1;
+	    }
+	}
+	return 0;
+    };
+}
+
+sub is_all_of {
+    my @tests = @_;
+    croak "is_all_of() expects at least two coderefs" if (scalar @tests < 2);
+    foreach my $test (@tests) {
+	croak "is_all_of() expects only coderefs" if (!defined $test || ref $test ne 'CODE');
+    }
+
+    return sub {
+	my @args = @_;
+	foreach my $test (@tests) {
+	    if (!&$test(@args)) {
+		return 0;
+	    }
+	}
+	return 1;
+    };
+}
 
 sub is_a {
     croak "is_a() expects a package name" if (scalar @_ != 1 || !defined $_[0] || ref $_[0] ne '');
@@ -160,7 +205,10 @@ sub reset {
     $self->{pre}         = undef;        # Coderef checking pre conditions
     $self->{post}        = undef;        # Coderef checking post conditions
     $self->{invariant}   = undef;        # Coderef checking an invariant condition
-    delete $self->{cache};
+    if (exists $self->{cache}) {
+	$self->{cache}->clear;
+	delete $self->{cache};
+    }
     return $self;
 }
 
@@ -304,9 +352,10 @@ Sub::Contract - Pragmatic contract programming for Perl
 
 =head1 SYNOPSIS
 
-First of all, you should define a library of pseudo-type constraints. A type
-constraint is a subroutine that returns true if the argument if of the right
-type, and returns false or croaks if not. Example:
+First of all, you should define a library of pseudo-type
+constraints. A type constraint is a subroutine that returns true if
+the argument if of the right type, and returns false or croaks if
+not. Example:
 
     use Regexp::Common;
 
@@ -323,8 +372,9 @@ type, and returns false or croaks if not. Example:
     sub is_account_number { ... }
     sub is_amount         { ... }
     # and so on...
-    
-To contract a function 'surface' that takes a list of 2 integers and returns 1 integer:
+
+To contract a function 'surface' that takes a list of 2 integers and
+returns 1 integer:
 
     use Sub::Contract qw(contract);
 
@@ -339,16 +389,17 @@ To contract a function 'surface' that takes a list of 2 integers and returns 1 i
 	return $_[0] * $_[1];
     }
 
-Since the result of 'surface' is a function of its input arguments only,
-we may want to memoize (cache) it:
+Since the result of 'surface' is a function of its input arguments
+only, we may want to memoize (cache) it:
 
     contract('surface')
         ->in(\&is_integer, \&is_integer)
         ->out(\&is_integer)
-        ->memoize
+        ->cache
         ->enable;
 
-If 'surface' took a hash of 2 integers instead, with the keys 'height' and 'width':
+If 'surface' took a hash of 2 integers instead, with the keys 'height'
+and 'width':
 
     use Sub::Contract qw(contract);
 
@@ -383,8 +434,8 @@ Of course, a real life example is more likly to look like:
                            amount => 1000,
                            date => "2008-06-16" );
 
-To make an argument of return value free of constraint, just
-set its constraint to undef:
+To make an argument of return value free of constraint, just set its
+constraint to undef:
 
     contract("send_money")
         ->in( undef,            # no need to check self
@@ -393,8 +444,8 @@ set its constraint to undef:
               date => \&is_date )
          ->enable;
 
-You can also declare invariants, pre- and post-conditions as in
-usual contract programming implementations:
+You can also declare invariants, pre- and post-conditions as in usual
+contract programming implementations:
 
     contract('foo')
          ->pre( \&validate_state_before )
@@ -402,7 +453,8 @@ usual contract programming implementations:
          ->invariant( \&validate_state )
          ->enable;
 
-To turn off all contracts within namespaces matching '^My::Account::.*$'
+To turn off all contracts within namespaces matching
+'^My::Account::.*$'
 
     use Sub::Contract::Pool qw(get_contract_pool);
 
@@ -411,33 +463,35 @@ To turn off all contracts within namespaces matching '^My::Account::.*$'
         $contract->disable;
     }
 
-You may list contracts during runtime, modify them and recompile
-them dynamically, or just turn them off. See 'Sub::Contract::Pool'
-for details.
+You may list contracts during runtime, modify them and recompile them
+dynamically, or just turn them off. See 'Sub::Contract::Pool' for
+details.
 
 =head1 DESCRIPTION
 
-Sub::Contract offers a pragmatic way to implement parts of the programming
-by contract paradigm in Perl.
+Sub::Contract offers a pragmatic way to implement parts of the
+programming by contract paradigm in Perl.
 
 Sub::Contract is not a design-by-contract framework.
 
-Sub::Contract aims at making it very easy to constrain subroutines input
-arguments and return values in order to emulate strong typing at runtime.
+Sub::Contract aims at making it very easy to constrain subroutines
+input arguments and return values in order to emulate strong type
+checking at runtime.
 
-Perl is a weakly typed language in which variables have a dynamic content
-at runtime. A feature often wished for in such circumstances is a way
-to define constraints on a subroutine's arguments and on its
-return values. A constraint is basically a test that the specific argument
-has to pass otherwise an error is raised.
+Perl is a weakly typed language in which variables have a dynamic
+content at runtime. A feature often wished for in such circumstances
+is a way to define constraints on a subroutine's arguments and on its
+return values. A constraint is basically a test that the specific
+argument has to pass otherwise an error is raised.
 
-For example, a subroutine C<add()> that takes 2 integers and return their
-sum could have constraints on both input arguments and on the return value
-stating that they must be defined and be integers or else we croak. That
-kind of tests is usually writen explicitely within the subroutine's
-body, hence leading to an overflow of argument validation code. With Sub::Contract
-you can move this code outside the subroutine body in a relatively simple
-and elegant way. The code for C<add()> and its contract could look like:
+For example, a subroutine C<add()> that takes 2 integers and return
+their sum could have constraints on both input arguments and on the
+return value stating that they must be defined and be integers or else
+we croak. That kind of tests is usually writen explicitely within the
+subroutine's body, hence leading to an overflow of argument validation
+code. With Sub::Contract you can move this code outside the subroutine
+body in a relatively simple and elegant way. The code for C<add()> and
+its contract could look like:
 
     contract('add')
         ->in(\&is_integer,\&is_integer)
@@ -446,73 +500,79 @@ and elegant way. The code for C<add()> and its contract could look like:
 
     sub add { return $_[0]+$_[1] }
 
-Sub::Contract doesn't aim at implementing all the properties of contract
-programming, but focuses on some that have proven handy in practice
-and tries to do it with a simple syntax.
+Sub::Contract doesn't aim at implementing all the properties of
+contract programming, but focuses on some that have proven handy in
+practice and tries to do it with a simple syntax.
 
-Perl also support calling contexts which can lead to tricky bugs. Sub::Contract
-attempts to constrain even the calling context of contracted subroutines so
-it match with what the subroutine is expected to return.
+Perl also support calling contexts which can lead to tricky
+bugs. Sub::Contract attempts to constrain even the calling context of
+contracted subroutines so it match with what the subroutine is
+expected to return.
 
-With Sub::Contract you can specify a contract per subroutine (or method).
-A contract is a set of constraints on the subroutine's input arguments, its
-returned values, or on a state before and after being called. If one
-of these constraints gets broken at runtime, the contract fails and a
-runtime error (die or croak) is emitted.
+With Sub::Contract you can specify a contract per subroutine (or
+method).  A contract is a set of constraints on the subroutine's input
+arguments, its returned values, or on a state before and after being
+called. If one of these constraints gets broken at runtime, the
+contract fails and a runtime error (die or croak) is emitted.
 
-Contracts generated by Sub::Contract are objects. Any contract can
-be disabled, modified, recompiled and re-enabled at runtime.
+Contracts generated by Sub::Contract are objects. Any contract can be
+disabled, modified, recompiled and re-enabled at runtime.
 
-All new contracts are automatically added to a contract pool.
-The contract pool can be searched at runtime for contracts matching
-some conditions.
+All new contracts are automatically added to a contract pool.  The
+contract pool can be searched at runtime for contracts matching some
+conditions.
 
 A compiled contract takes the form of an anonymous subroutine wrapped
 around the contracted subroutine. Since it is a very appropriate place
-to perform memoization of the contracted subroutine's result, contracts
-also offer memoizing/caching as an option.
+to perform memoization of the contracted subroutine's result,
+contracts also offer memoizing/caching as an option.
 
-There may be only one contract per subroutine. To modify a subroutine's contract,
-you need to get the contract object for this subroutine and alter it. You
-can fetch the contract by querying the contract pool (see Sub::Contract::Pool).
+There may be only one contract per subroutine. To modify a
+subroutine's contract, you need to get the contract object for this
+subroutine and alter it. You can fetch the contract by querying the
+contract pool (see Sub::Contract::Pool).
 
-The contract definition API is designed pragmatically. Experience shows
-that contracts in Perl are mostly used to enforce some form of
+The contract definition API is designed pragmatically. Experience
+shows that contracts in Perl are mostly used to enforce some form of
 argument type validation, hence compensating for Perl's lack of strong
 typing, or to replace some assertion code.
 
 In some cases, one may want to enable contracts during development,
-but disable them in production to meet speed requirements (though this is
-not encouraged). That is easily done with the contract pool.
+but disable them in production to meet speed requirements (though this
+is not encouraged). That is easily done with the contract pool.
 
 =head1 DISCUSSION
 
 =head2 Definitions
 
-To make things easier to describe, let's agree on the meaning of the following terms:
+To make things easier to describe, let's agree on the meaning of the
+following terms:
 
 =over 4
 
-=item Contractor: The contractor is a subroutine whose state before and after
-a call and whose input arguments and return values are verified against constraints
-defined in a contract.
+=item Contractor: The contractor is a subroutine whose state before
+and after a call and whose input arguments and return values are
+verified against constraints defined in a contract.
 
-=item Contract: A contract defines a set of constraints that a contractor has to conform to.
-The contract may even tell whether or not to memoize the contractor's results.
+=item Contract: A contract defines a set of constraints that a
+contractor has to conform to.  The contract may even tell whether or
+not to memoize the contractor's results.
 
-=item Constraint: A subroutine that returns true when its first argument is of the right type, and either
-returns false or croaks (dies) when the it is not. Constraints are specified inside the contract as code references.
+=item Constraint: A subroutine that returns true when its first
+argument is of the right type, and either returns false or croaks
+(dies) when the it is not. Constraints are specified inside the
+contract as code references.
 
 =back
 
 =head2 Contracts as objects
 
-Sub::Contract differs from traditional contract programming
-frameworks in that it implements contracts as objects that
-can be dynamically altered during runtime. The idea of altering
-a contract during runtime may seem to conflict with the very idea
-of programming by contract, but it makes sense when considering that Perl being
-a dynamic language, all code can change its behaviour during runtime.
+Sub::Contract differs from traditional contract programming frameworks
+in that it implements contracts as objects that can be dynamically
+altered during runtime. The idea of altering a contract during runtime
+may seem to conflict with the very idea of programming by contract,
+but it makes sense when considering that Perl being a dynamic
+language, all code can change its behaviour during runtime.
 
 Furthermore, the availability of all contracts via the contract pool
 at runtime provides us with a powerfull self-introspection mechanism.
@@ -525,25 +585,27 @@ emit an error looking as if the contractor croaked.
 
 =head2 Contracts and context
 
-Contractors are always called in a given context. It can be either scalar
-context, array context or void context (no return value expected).
+Contractors are always called in a given context. It can be either
+scalar context, array context or void context (no return value
+expected).
 
-How a contract affects the context in which a contractor should be called
-is rather tricky. The contractor's return
-values may be context sensitive, if the contractor for example uses C<wantarray>.
-But if the contract code was to respect the calling context when calling the
-contractor, it would not be able to validate return values when called in void
-context, or it wouldn't be able to validate a list of return values if called
-in scalar context.
+How a contract affects the context in which a contractor should be
+called is rather tricky. The contractor's return values may be context
+sensitive, if the contractor for example uses C<wantarray>. But if
+the contract code was to respect the calling context when calling the
+contractor, it would not be able to validate return values when called
+in void context, or it wouldn't be able to validate a list of return
+values if called in scalar context.
 
-To solve this dilemna, Sub::Contract DOES NOT RESPECT CONTEXT. This is a design
-decision.
+To solve this dilemna, Sub::Contract DOES NOT RESPECT CONTEXT. This is
+a design decision.
 
-This means that you SHOULD NOT CONTRACT a subroutine that relies on C<wantarray>
-or is calling-context sensitive. And if you really have to contract such a subroutine,
-do not specify any constraints on its return values with C<< ->out() >>.
+This means that you SHOULD NOT CONTRACT a subroutine that relies on
+C<wantarray> or is calling-context sensitive. And if you really have
+to contract such a subroutine, do not specify any constraints on its
+return values with C<< ->out() >>.
 
-See C<< ->out() >> for a details.
+See C<< ->out() >> for details.
 
 =head2 Issues with contract programming
 
@@ -552,21 +614,21 @@ See C<< ->out() >> for a details.
 =item Inheritance
 
 Contracts do not behave well with inheritance, mostly because there is
-no standard way of inheriting the parent class's contracts. In Sub::Contract,
-a subroutine in a child classes would not inherit the contract of an overriden
-subroutine from a parent class.
-But any call to a contractor subroutine belonging to the parent class
-from within the child class is verified against the parent's contract.
+no standard way of inheriting the parent class's contracts. In
+Sub::Contract, a subroutine in a child classes would not inherit the
+contract of an overriden subroutine from a parent class.  But any call
+to a contractor subroutine belonging to the parent class from within
+the child class is verified against the parent's contract.
 
 =item Relevant error messages
 
 To be usable, contracts must be specific about what fails. Therefore
-it is prefered that constraints croak from within the contract and with
-a detailed error message, rather than just return false.
+it is prefered that constraints croak from within the contract and
+with a detailed error message, rather than just return false.
 
-A failed constraint must cause an error that points to the line at which
-the contractor was called. This is the case if your constraints croak, but
-not if they die.
+A failed constraint must cause an error that points to the line at
+which the contractor was called. This is the case if your constraints
+croak, but not if they die.
 
 =back
 
@@ -576,9 +638,10 @@ not if they die.
 
 =item * Sub::Contract VERSUS Class::Contract
 
-Class::Contract implements contract programming in a way that is more faithfull to the
-original contract programming syntax defined by Eiffel. It also enables design-by-contract,
-meaning that your classes are implemented inside the contract, rather than having class
+Class::Contract implements contract programming in a way that is more
+faithfull to the original contract programming syntax defined by
+Eiffel. It also enables design-by-contract, meaning that your classes
+are implemented inside the contract, rather than having class
 implementation and contract definition as 2 distinct code areas.
 
 Class::Contract does not provide memoization from within the contract.
@@ -586,11 +649,13 @@ Class::Contract does not provide calling context constraining.
 
 =item * Sub::Contract VERSUS Class::Agreement
 
-Class::Agreement offers the same functionality as Sub::Contract, though with a somewhat
-heavier syntax if you are only seeking to emulate strong typing at runtime.
+Class::Agreement offers the same functionality as Sub::Contract,
+though with a somewhat heavier syntax if you are only seeking to
+emulate strong typing at runtime.
 
-Class::Agreement does not provide memoization from within the contract.
-Class::Agreement does not provide calling context constraining.
+Class::Agreement does not provide memoization from within the
+contract. Class::Agreement does not provide calling context
+constraining.
 
 =back
 
@@ -602,8 +667,8 @@ Class::Agreement does not provide calling context constraining.
 
 Return an empty contract for the function named C<$qualified_name>.
 
-If C<$qualified_name> is a function name without its package name,
-the function is assumed to be in the caller package.
+If C<$qualified_name> is a function name without its package name, the
+function is assumed to be in the caller package.
 
     use Sub::Contract;
 
@@ -615,13 +680,13 @@ the function is assumed to be in the caller package.
 
 A given function can be contracted only once. If you want to modify a
 function's contract after having enabled the contract, you can't just
-call C<< Sub::Contract->new() >> again. Instead you must retrieve the contract
-object for this function, modify it and enable it anew. Retrieving the
-function's contract object can be done by querying the contract pool
-(See 'Sub::Contract::Pool').
+call C<< Sub::Contract->new() >> again. Instead you must retrieve the
+contract object for this function, modify it and enable it
+anew. Retrieving the function's contract object can be done by
+querying the contract pool (See 'Sub::Contract::Pool').
 
-In practice, you may want to use C<< contract() >> instead of C<< new() >>
-to create a contract:
+In practice, you may want to use C<< contract() >> instead of C<<
+new() >> to create a contract:
 
     use Sub::Contract qw(contract);
 
@@ -635,14 +700,15 @@ located in package C<$package>.
 
 =item C<< $contract->invariant($coderef) >>
 
-Execute C<$coderef> both before and after calling the contractor. Return the contract.
+Execute C<$coderef> both before and after calling the
+contractor. Return the contract.
 
 C<$coderef> gets in arguments the arguments passed to the contractor,
-both when called before and after calling the contractor.
-C<$coderef> should return 1 if the condition passes and 0 if it fails.
+both when called before and after calling the contractor.  C<$coderef>
+should return 1 if the condition passes and 0 if it fails.
 C<$coderef> may croak, in which case the error will look as if caused
-by the calling code. Do not C<die> from C<$coderef>, always use C<croak>
-instead.
+by the calling code. Do not C<die> from C<$coderef>, always use
+C<croak> instead.
 
     package MyCircle;
 
@@ -666,8 +732,8 @@ contractor. Return the contract.
 C<$coderef> gets in arguments the arguments passed to the contractor.
 C<$coderef> should return 1 if the condition passes and 0 if it fails.
 C<$coderef> may croak, in which case the error will look as if caused
-by the calling code. Do not C<die> from C<$coderef>, always use C<croak>
-instead.
+by the calling code. Do not C<die> from C<$coderef>, always use
+C<croak> instead.
 
 =item C<< $contract->post($coderef) >>
 
@@ -676,20 +742,20 @@ the contractor. Return the contract.
 
 C<$coderef> gets in arguments the return values from the contractor,
 eventually altered by the context (meaning C<()> if called in void
-context, a scalar if called in scalar context and a list if called
-in array context).
-C<$coderef> should return 1 if the condition passes and 0 if it fails.
-C<$coderef> may croak, in which case the error will look as if caused
-by the calling code. Do not C<die> from C<$coderef>, always use C<croak>
-instead.
+context, a scalar if called in scalar context and a list if called in
+array context). C<$coderef> should return 1 if the condition passes
+and 0 if it fails.  C<$coderef> may croak, in which case the error
+will look as if caused by the calling code. Do not C<die> from
+C<$coderef>, always use C<croak> instead.
 
 =item C<< $contract->in(@checks) >>
 
-Validate each input argument of the contractor one by one. Return the contract.
+Validate each input argument of the contractor one by one. Return the
+contract.
 
-C<@checks> specifies which constraint should be called
-for each input argument. The syntax of C<@checks> supports arguments
-passed in array-style, hash-style or a mix of both.
+C<@checks> specifies which constraint should be called for each input
+argument. The syntax of C<@checks> supports arguments passed in
+array-style, hash-style or a mix of both.
 
 If the contractor expects a list of say 3 arguments, its contract's
 C<in()> should look like:
@@ -697,21 +763,19 @@ C<in()> should look like:
     contract('contractor')
         ->in(\&check_arg0, \&check_arg1, \&check_arg2)
 
-Where C<check_argX> is a code reference to a subroutine that
-takes the corresponding argument as input value and returns
-true if the argument is ok, and either returns false or croaks
-if the argument is not ok.
+Where C<check_argX> is a code reference to a subroutine that takes the
+corresponding argument as input value and returns true if the argument
+is ok, and either returns false or croaks if the argument is not ok.
 
-If some arguments need not to be checked, just replace the code
-ref of their corresponding constraint with C<undef>:
+If some arguments need not to be checked, just replace the code ref of
+their corresponding constraint with C<undef>:
 
     # check input argument 0 and 2, but not the middle one
     contract('contractor')
         ->in(\&check_arg0, undef, \&check_arg2)
 
-This comes in handy when contracting an object method where
-the first passed argument is the object itself and need not
-being checked:
+This comes in handy when contracting an object method where the first
+passed argument is the object itself and need not being checked:
 
     # method perimeter on obect MyCircle expects no
     # arguments, but method color expects a color code
@@ -722,8 +786,8 @@ being checked:
         ->in(undef, defined_and(is_a('MyCircle::ColorCode')))
         ->enable;
 
-You can also constrain arguments passed in hash-style, and it look like
-this:
+You can also constrain arguments passed in hash-style, and it look
+like this:
 
     # function add expects a hash with 2 keys 'a' and 'b'
     # having values that are integers
@@ -737,9 +801,9 @@ If C<add> was a method on an object, C<in()> would look like:
         ->in(undef, a => \&is_integer, b => \&is_integer)
         ->enable;
 
-Finally, you can mix list- and hash-style argument passing.
-Say that C<add()> expects first 2 arguments then a hash of
-2 keys with 2 values, and all must be integers:
+Finally, you can mix list- and hash-style argument passing. Say that
+C<add()> expects first 2 arguments then a hash of 2 keys with 2
+values, and all must be integers:
 
     contract('add')
         ->in(\&is_integer,
@@ -749,17 +813,17 @@ Say that C<add()> expects first 2 arguments then a hash of
         ->enable;
 
 Most of the constraints on arguments will in fact act like type
-constraints and be the same all across your contracts. Instead
-of declaring again and again the same anonymous sub in every
-contract, create a function that tests this specific type. Give those functions names
-that show which types they test, such as C<is_integer>, C<is_string>,
-C<is_date>, C<is_arrayref> and so on. It is also a good idea
-to gather all those functions in one specific module to import
+constraints and be the same all across your contracts. Instead of
+declaring again and again the same anonymous sub in every contract,
+create a function that tests this specific type. Give those functions
+names that show which types they test, such as C<is_integer>,
+C<is_string>, C<is_date>, C<is_arrayref> and so on. It is also a good
+idea to gather all those functions in one specific module to import
 together with C<Sub::Contract>.
 
-If you don't want to check whether the argument is defined or not
-in every constraint, you may want to use C<defined_and> and
-C<undef_or> (see further down).
+If you don't want to check whether the argument is defined or not in
+every constraint, you may want to use C<defined_and> and C<undef_or>
+(see further down).
 
 =item C<< $contract->out(@checks) >>
 
@@ -768,8 +832,9 @@ Same as C<in> but for validating return arguments one by one. Return the contrac
 The syntax of C<@checks> is the same as for C<in()>.
 
 The content of C<@checks> gives us enough information to determine
-which calling context the contractor should be called in. Sub::Contract
-will constrain the calling context according to the following rules:
+which calling context the contractor should be called in.
+Sub::Contract will constrain the calling context according to the
+following rules:
 
     # Case 1: out() is not specified.
     #
@@ -824,20 +889,20 @@ will constrain the calling context according to the following rules:
 
     contract("foo")->out(a => \&is_integer, b => \&is_date)->enable;
 
-As you can see from the cases above, the only situation when Sub::Contract
-respects the calling context is when C<out()> has not been called to specify
-any constraints on return values.
+As you can see from the cases above, the only situation when
+Sub::Contract respects the calling context is when C<out()> has not
+been called to specify any constraints on return values.
 
 =item C<< $contract->enable >>
 
-Compile and enable a contract. If the contract is already enabled, it is
-first disabled, then re-compiled and enabled.
+Compile and enable a contract. If the contract is already enabled, it
+is first disabled, then re-compiled and enabled.
 
 Return the contract.
 
-Enabling the contract consists in dynamically generating
-some code that validates the contract before and after calls to the
-contractor and wrapping this code around the contractor.
+Enabling the contract consists in dynamically generating some code
+that validates the contract before and after calls to the contractor
+and wrapping this code around the contractor.
 
 =item C<< $contract->disable >>
 
@@ -850,7 +915,8 @@ Return true if this contract is currently enabled and false otherwise.
 
 =item C<< $contract->contractor >>
 
-Return the fully qualified name of the subroutine affected by this contract.
+Return the fully qualified name of the subroutine affected by this
+contract.
 
 =item C<< $contract->contractor_cref >>
 
@@ -858,16 +924,18 @@ Return a code reference to the contracted subroutine.
 
 =item C<< $contract->reset >>
 
-Remove all previously defined constraints from this contract and disable
-memoization. C<reset> has no effect on the contract validation code as long as you
-don't call C<enable> after C<reset>. C<reset> is usefull if you want to
-redefine a contract from scratch during runtime.
+Remove all previously defined constraints from this contract and
+disable memoization. C<reset> has no effect on the contract validation
+code as long as you don't call C<enable> after C<reset>. C<reset> is
+usefull if you want to redefine a contract from scratch during
+runtime.
 
 =back
 
 =head1 MEMOIZING
 
-Contract objects provide implement memoization with the following methods:
+Contract objects provide implement memoization with the following
+methods:
 
 =over 4
 
@@ -875,15 +943,14 @@ Contract objects provide implement memoization with the following methods:
 
 Enable memoization of the contractor's results. Return the contract.
 
-The cache itself is implemented as an instance of Cache::Memory.
-If C<size> is set, the maximum memory size of the underlying instance of
-Cache::Memory is set to C<$s> bytes. If C<size> is omitted, this
-maximum cache size defaults to 10 mega bytes.
+The cache itself is implemented as a hash of at most C<size>
+entries. If C<size> is omitted, the maximum cache size defaults to
+10000 entries.
 
 =item C<< $contract->clear_cache >>
 
-Empty the contractor's cache of memoized results.
-Return the contract.
+Empty the contractor's cache of memoized results. Return the
+contract.
 
 =item C<< $contract->has_cache >>
 
@@ -891,15 +958,14 @@ Return 1 if the contractor is memoized. Return 0 if not.
 
 =item C<< $contract->get_cache >>
 
-Return the underlying Cache object used to cache this contract's contractor.
-Return undef if the contractor is not memoized.
+Return the underlying hash table used to cache this contract's
+contractor. Return undef if the contractor is not memoized.
 
 =item C<< $contract->add_to_cache(\@args,\@results) >>
 
-Add an entry to the contractor's cache telling that the input arguments C<@args>
-should yield the results C<@results>.
-Dies if the contractor is not memoized.
-Return the contract.
+Add an entry to the contractor's cache telling that the input
+arguments C<@args> should yield the results C<@results>. Dies if the
+contractor is not memoized.  Return the contract.
 
 =back
 
@@ -920,11 +986,10 @@ Must be explicitly imported:
 
     sub add_integers {...}
 
-=item C<< undef_or($coderef) >>
+=item C<< is_undefined_or($coderef) >>
 
-Returns a subroutine that takes 1 argument and returns
-true if this argument is not defined or if it validates
-the constraint C<$coderef>.
+Returns a subroutine that takes 1 argument and returns true if this
+argument is not defined or if it validates the constraint C<$coderef>.
 
 Syntax sugar to allow you to specify a constraint on an argument
 saying 'this argument must be undefined or validate this constraint'.
@@ -943,10 +1008,10 @@ argument is an integer and croaks otherwise, you could write:
     sub set_value {...}
 
 
-=item C<< defined_and($coderef) >>
+=item C<< is_defined_and($coderef) >>
 
-Returns a subroutine that takes 1 argument and returns
-true if this argument is defined and validates the constraint C<$coderef>.
+Returns a subroutine that takes 1 argument and returns true if this
+argument is defined and validates the constraint C<$coderef>.
 
 Syntax sugar to allow you to specify a constraint on an argument
 saying 'this argument must be defined and validate this constraint'.
@@ -966,6 +1031,23 @@ Example:
 
    sub set_name {...}
 
+=item C<< is_not($coderef) >>
+
+Returns a subroutine that takes 1 argument and returns true if the
+constraint C<$coderef> does not validate this argument, false if it
+does.
+
+=item C<< is_one_of(@coderefs) >>
+
+Returns a subroutine that takes 1 argument and returns true if at
+least one of the constraints in C<@coderefs> validate this argument,
+and false if none does.
+
+=item C<< is_all_of(@coderefs) >>
+
+Returns a subroutine that takes 1 argument and returns true if every
+one of the constraints in C<@coderefs> validate this argument, and
+false if at least one does not.
 
 =item C<< is_a($pkg) >>
 
@@ -982,6 +1064,10 @@ Example:
 
    sub set_name {...}
 
+=item C<< undef_or >> alias for C<is_undefined_or>. Don't use! 
+
+=item C<< defined_and >> alias for C<is_defined_and>. Don't use! 
+
 =back
 
 =head1 CLASS VARIABLES
@@ -994,8 +1080,8 @@ inside the contract validation code and nowhere else!
 
 =item C<< $Sub::Contract::wantarray >>
 
-1 if the contractor is called in array context, 0 if it is called
-in scalar context, and undef if called in void context.
+1 if the contractor is called in array context, 0 if it is called in
+scalar context, and undef if called in void context.
 
 =item C<< @Sub::Contract::args >>
 
@@ -1008,9 +1094,9 @@ according to the calling context rules set by C<< ->out() >>.
 
 =back
 
-The following example code uses those variables to validate
-that a function C<foo> returns C<< 'sad' >> if it gets no input
-arguments and C<< 'happy' >> if it gets some:
+The following example code uses those variables to validate that a
+function C<foo> returns C<< 'sad' >> if it gets no input arguments and
+C<< 'happy' >> if it gets some:
 
     use Sub::Contract qw(contract);
 
@@ -1033,12 +1119,14 @@ arguments and C<< 'happy' >> if it gets some:
 
 =head1 CACHE PROFILER
 
-To turn on the cache profiler, just set the environment variable PERL5SUBCONTRACTSTATS to 1:
+To turn on the cache profiler, just set the environment variable
+PERL5SUBCONTRACTSTATS to 1:
 
     export PERL5SUBCONTRACTSTATS=1
 
-When the program stops, Sub::Contract will then print a text report to STDOUT showing the cache
-hit ratio for every memoized subroutine in the program.
+When the program stops, Sub::Contract will then print a text report to
+STDOUT showing the cache hit ratio for every memoized subroutine in
+the program.
 
 =head1 SEE ALSO
 
@@ -1048,33 +1136,35 @@ See Carp::Datum, Class::Agreement, Class::Contract.
 
 Sub::Contract is used in production and considered stable.
 
-Sub::Contract does not respect calling context. This is a feature,
-not a bug. See 'Contracts and context' under 'Discussion'.
+Sub::Contract does not respect calling context. This is a feature, not
+a bug. See 'Contracts and context' under 'Discussion'.
 
-You may also want to read 'Issues with contract programming' under 'Discussion'.
+You may also want to read 'Issues with contract programming' under
+'Discussion'.
 
 Please submit bugs to rt.cpan.org.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.28 2008/06/18 14:22:47 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.33 2009/06/03 18:54:05 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 
-Erwan Lemonnier C<< <erwan@cpan.org> >>,
-as part of the Pluto developer group at the Swedish Premium Pension Authority.
-Kind regards to Jens Riboe for a couple of good suggestions.
+Erwan Lemonnier C<< <erwan@cpan.org> >>, as part of the Pluto
+developer group at the Swedish Premium Pension Authority. Kind
+regards to Jens Riboe for a couple of good suggestions.
 
 =head1 LICENSE AND DISCLAIMER
 
-This code was partly developed at the Swedish Premium Pension Authority as part of
-the Authority's software development activities. This code is distributed
-under the same terms as Perl itself. We encourage you to help us improving
-this code by sending feedback and bug reports to the author(s).
+This code was partly developed at the Swedish Premium Pension
+Authority as part of the Authority's software development
+activities. This code is distributed under the same terms as Perl
+itself. We encourage you to help us improving this code by sending
+feedback and bug reports to the author(s).
 
-This code comes with no warranty. The Swedish Premium Pension Authority and the author(s)
-decline any responsibility regarding the possible use of this code or any consequence
-of its use.
+This code comes with no warranty. The Swedish Premium Pension
+Authority and the author(s) decline any responsibility regarding the
+possible use of this code or any consequence of its use.
 
 =cut
 

@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 04_test_pre_post_conditions.t,v 1.8 2008/06/17 11:31:42 erwan_lemonnier Exp $
+#   $Id: 04_test_pre_post_conditions.t,v 1.9 2009/06/01 20:43:06 erwan_lemonnier Exp $
 #
 
 package main;
@@ -36,8 +36,7 @@ sub foo {
 eval { $c = contract('foo')
 	   ->pre(
 		  sub {
-		      print "got args: ".Dumper(\@_);
-			  croak "dying now" if ($_[0] eq 'please die');
+		      croak "dying now" if ($_[0] eq 'please die');
 		      return $_[0] eq 'bob';
 		  }
 		 )
@@ -52,7 +51,7 @@ eval { foo('bilou') };
 ok( $@ =~ /pre-condition fails before calling main::foo/, "pre condition fails");
 
 eval { foo('please die') };
-ok( $@ =~ /dying now at .*04_test_pre_post_conditions.t line 54/, "pre condition croaks");
+ok( $@ =~ /dying now at .*04_test_pre_post_conditions.t line 53/, "pre condition croaks");
 
 # test post condition
 eval {

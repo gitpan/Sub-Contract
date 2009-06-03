@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 07_test_error_messages.t,v 1.5 2008/06/17 11:31:42 erwan_lemonnier Exp $
+#   $Id: 07_test_error_messages.t,v 1.6 2009/06/01 20:43:06 erwan_lemonnier Exp $
 #
 
 package main;
@@ -82,7 +82,7 @@ ok($@ =~ /confessing now at .*07_test_error_messages.t line 72/, "condition conf
 # invariant before
 $c->reset->invariant( sub { return 0; } )->enable;
 eval { foo(); };
-ok($@ =~ /invariant fails before calling main::foo at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line 84\n.*at .*07_test_error_messages.t line 84/, "invariant fails before ($@)");
+ok($@ =~ /invariant fails before calling main::foo at .*\n.*main::contract_foo\(\) called at .*07_test_error_messages.t line 84\n.*at .*07_test_error_messages.t line 84/, "invariant fails before");
 
 # invariant after
 my $count = 0;

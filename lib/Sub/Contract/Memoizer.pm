@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
 #
-#   $Id: Memoizer.pm,v 1.8 2008/06/18 14:02:31 erwan_lemonnier Exp $
+#   $Id: Memoizer.pm,v 1.10 2009/06/03 18:54:05 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Memoizer;
@@ -12,10 +12,9 @@ use warnings;
 use Carp qw(croak confess);
 use Data::Dumper;
 use Symbol;
+use Sub::Contract::Cache;
 
-use Cache::Memory;
-
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 #---------------------------------------------------------------
 #
@@ -69,55 +68,27 @@ END {
 #---------------------------------------------------------------
 #
 #
-# memoization
+# memoization - implement the cache behavior of a contract
 #
 #
 #---------------------------------------------------------------
 
-
-#
-# the cache part
-#
-
-# TODO: implement file cache
-# TODO: implement expiry time
-
 sub cache {
     my ($self,%args) = @_;
-    my $size = delete $args{size} || 10485760; # default size = 10mb
+    my $size = delete $args{size} || 10000; # default size 10000 elements
 
     croak "cache() got unknown arguments: ".Dumper(%args) if (%args);
     croak "size should be a number" if (!defined $size || $size !~ /^\d+$/);
 
     # NOTE: $contract->reset() deletes this cache
-    $self->{cache} = new Cache::Memory( namespace => $self->contractor, size_limit => $size );
+    $self->{cache} = new Sub::Contract::Cache( namespace => $self->contractor,
+					       size => $size );
 
     if ($CACHE_STATS_ON && !exists $CACHE_STATS{$self->contractor}) {
 	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0 };
     }
 
     return $self;
-}
-
-sub _make_cache_key {
-    my (@args) = @_;
-
-    # NOTE: previously, we used Dumper(@args) as the key, but Dumper is quite
-    # slow, hence the use of join() here. But join will replace references
-    # with an adress code while concatening to the string. 2 series of input
-    # arguments with the same scalar reference, but for which the refered scalar
-    # had different values will therefore yield the same key, though the
-    # results will be different.
-    # therefore we want to forbid the use of contract's cache whith references
-    # but we have to think of speed...
-
-    if (grep({ ref $_; } @args)) {
-	confess "ERROR: cache cannot handle input arguments that are references. arguments were:\n".Dumper(@args);
-    }
-
-    @args = map { (defined $_) ? $_ : "undef"; } @args;
-
-    return join(":",@args);
 }
 
 sub get_cache {
@@ -141,13 +112,15 @@ sub add_to_cache {
     confess "add_to_cache expects an array ref of results"   if (!defined $results || ref $results ne "ARRAY");
     confess "contract defines no cache" if (!exists $self->{cache});
 
-    my $key = _make_cache_key(@{$args});
-    $self->{cache}->set($key,$results);
+    # we assume that the cached function is context insensitive and hence should
+    # return the same result independently of context.
 
-    if ($CACHE_STATS_ON) {
-	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0 };
-    }
+    # the code to generate the key has to be the same as in Compiler.pm 
+    my $key_array = join( ":", map( { (defined $_) ? $_ : "undef"; } "array", @$args) );
+    my $key_scalar = join( ":", map( { (defined $_) ? $_ : "undef"; } "scalar", @$args) );
 
+    $self->{cache}->set($key_array,$results);
+    $self->{cache}->set($key_scalar,$results);
 
     return $self;
 }
@@ -194,7 +167,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Memoizer.pm,v 1.8 2008/06/18 14:02:31 erwan_lemonnier Exp $
+$Id: Memoizer.pm,v 1.10 2009/06/03 18:54:05 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

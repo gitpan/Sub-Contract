@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 02_test_basic_contract.t,v 1.5 2008/04/28 15:43:32 erwan_lemonnier Exp $
+#   $Id: 02_test_basic_contract.t,v 1.6 2009/06/01 20:43:06 erwan_lemonnier Exp $
 #
 
 #-------------------------------------------------------------------
@@ -119,12 +119,10 @@ $value = "bob";
 is(foo7(123),"bob","foo7 returns bob before contract enabled");
 
 # now enabling contract
-print "now enabling foo\n";
 $c7->enable();
 is(foo7(456),"bob","foo7 returns bob after contract enabled");
 
 # now disabling contract
-print "now disabling foo\n";
 $c7->disable();
 is(foo7(789),"bob","foo7 returns bob after contract disabled");
 
