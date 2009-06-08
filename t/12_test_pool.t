@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 12_test_pool.t,v 1.3 2008/06/16 14:58:15 erwan_lemonnier Exp $
+#   $Id: 12_test_pool.t,v 1.4 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 use strict;
@@ -28,7 +28,7 @@ use Test::More;
 BEGIN {
 
     use check_requirements;
-    plan tests => 88;
+    plan tests => 148;
 
     use_ok("Sub::Contract",'contract');
     use_ok("Sub::Contract::Pool",'get_contract_pool');
@@ -75,12 +75,17 @@ sub look_at_pool {
     # check that the pool contains no contract for those fully qualified names
     foreach my $name (@impossible_names) {
 	ok(!$pool->has_contract($name), "pool has no contract for contractor [$name]");
+        is($pool->find_contract($name), undef, "and find_contract doesn't find [$name]");
     }
 
     if ($expect{has}) {
 	foreach my $name (@{$expect{has}}) {
 	    # check that has_contract agrees that contract is in pool
 	    ok($pool->has_contract($name), "pool has contract for contractor [$name]");
+
+	    my $c = $pool->find_contract($name);
+	    is(ref $c, "Sub::Contract",  "find_contract returns a contract");
+	    is($c->contractor, $name,  "find_contract returns the right contract");
 
 	    # check that this contract really is in the pool
 	    my $found = 0;
@@ -95,6 +100,9 @@ sub look_at_pool {
     # test that the names of subroutine never matches
     eval { $pool->has_contract('foo') };
     ok( $@ =~ /method has_contract.. expects a fully qualified function name/, "has_contract croaks on name 'foo'");
+
+    eval { $pool->find_contract('foo') };
+    ok( $@ =~ /method find_contract.. expects a fully qualified function name/, "find_contract croaks on name 'foo'");
 }
 
 #

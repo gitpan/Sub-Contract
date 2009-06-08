@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Compiler - Compile, enable and disable a contract
 #
-#   $Id: Compiler.pm,v 1.20 2009/06/03 04:40:12 erwan_lemonnier Exp $
+#   $Id: Compiler.pm,v 1.21 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Compiler;
@@ -13,7 +13,7 @@ use Data::Dumper;
 use Sub::Contract::Debug qw(debug);
 use Sub::Name;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 #---------------------------------------------------------------
 #
@@ -595,7 +595,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Compiler.pm,v 1.20 2009/06/03 04:40:12 erwan_lemonnier Exp $
+$Id: Compiler.pm,v 1.21 2009/06/08 19:44:28 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

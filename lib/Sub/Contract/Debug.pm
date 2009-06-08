@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Debug - Guess once...
 #
-#   $Id: Debug.pm,v 1.9 2009/06/03 04:40:12 erwan_lemonnier Exp $
+#   $Id: Debug.pm,v 1.10 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Debug;
@@ -12,7 +12,7 @@ use Carp qw(croak);
 
 use base qw(Exporter);
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 our @EXPORT = ();
 our @EXPORT_OK = ('debug');
@@ -77,7 +77,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Debug.pm,v 1.9 2009/06/03 04:40:12 erwan_lemonnier Exp $
+$Id: Debug.pm,v 1.10 2009/06/08 19:44:28 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

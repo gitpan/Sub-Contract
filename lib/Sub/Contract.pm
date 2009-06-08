@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.33 2009/06/03 18:54:05 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.34 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -33,7 +33,7 @@ our @EXPORT_OK = qw( contract
 		     is_a
 		     );
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -822,8 +822,8 @@ idea to gather all those functions in one specific module to import
 together with C<Sub::Contract>.
 
 If you don't want to check whether the argument is defined or not in
-every constraint, you may want to use C<defined_and> and C<undef_or>
-(see further down).
+every constraint, you may want to use C<is_defined_and> and
+C<is_undefined_or> (see further down).
 
 =item C<< $contract->out(@checks) >>
 
@@ -986,6 +986,20 @@ Must be explicitly imported:
 
     sub add_integers {...}
 
+=back
+
+The following exported functions help you building powerfull
+constraints by combining simpler constraints in a functional
+programming fashion. Below is a example of a complex contract built by
+combining simpler tests such as C<is_integer>:
+
+    contract("foobar")
+        ->in( a => is_undefined_or(is_one_of(\&is_integer,\&is_a("Math::BigInt"))),
+              b => is_defined_and(\is_a("Duck")) )
+        ->enable;
+
+=over 4
+
 =item C<< is_undefined_or($coderef) >>
 
 Returns a subroutine that takes 1 argument and returns true if this
@@ -997,12 +1011,12 @@ saying 'this argument must be undefined or validate this constraint'.
 Assuming you have a test function C<is_integer> that passes if its
 argument is an integer and croaks otherwise, you could write:
 
-    use Sub::Contract qw(contract undef_or);
+    use Sub::Contract qw(contract is_undefined_or);
 
     # set_value takes only 1 argument that must be either
     # undefined or be validated by is_integer()
     contract('set_value')
-        ->in(undef_or(\&is_integer))
+        ->in(is_undefined_or(\&is_integer))
         ->enable;
 
     sub set_value {...}
@@ -1018,15 +1032,15 @@ saying 'this argument must be defined and validate this constraint'.
 
 Example:
 
-    use Sub::Contract qw(contract defined_and undef_or);
+    use Sub::Contract qw(contract is_defined_and is_undefined_or);
 
     # set_name takes a hash that must contain a key 'name'
     # that must be defined and validate is_word(), and may
     # contain a key 'nickname' that can be either undefine
     # or must validate is_word().
     contract('set_name')
-        ->in( name => defined_and(\&is_word),
-              nickname => undef_or(\&is_word) )
+        ->in( name => is_defined_and(\&is_word),
+              nickname => is_undefined_or(\&is_word) )
         ->enable;
 
    sub set_name {...}
@@ -1146,7 +1160,7 @@ Please submit bugs to rt.cpan.org.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.33 2009/06/03 18:54:05 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.34 2009/06/08 19:44:28 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 

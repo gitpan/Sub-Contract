@@ -1,6 +1,9 @@
+.DS_Store
+benchmark/.DS_Store
 benchmark/bench.pl
 benchmark/ContractClosure.pm
 Changes
+lib/.DS_Store
 lib/Sub/Contract.pm
 lib/Sub/Contract/ArgumentChecks.pm
 lib/Sub/Contract/Cache.pm

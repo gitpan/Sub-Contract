@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
 #
-#   $Id: Memoizer.pm,v 1.10 2009/06/03 18:54:05 erwan_lemonnier Exp $
+#   $Id: Memoizer.pm,v 1.11 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Memoizer;
@@ -14,7 +14,7 @@ use Data::Dumper;
 use Symbol;
 use Sub::Contract::Cache;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 #---------------------------------------------------------------
 #
@@ -167,7 +167,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Memoizer.pm,v 1.10 2009/06/03 18:54:05 erwan_lemonnier Exp $
+$Id: Memoizer.pm,v 1.11 2009/06/08 19:44:28 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

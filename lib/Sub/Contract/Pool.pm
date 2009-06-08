@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::Pool - The pool of contracts
 #
-#   $Id: Pool.pm,v 1.13 2009/06/03 04:40:12 erwan_lemonnier Exp $
+#   $Id: Pool.pm,v 1.14 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Pool;
@@ -17,7 +17,7 @@ use accessors qw( _contract_index
 
 use base qw(Exporter);
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 our @EXPORT = ();
 our @EXPORT_OK = ('get_contract_pool');
@@ -120,6 +120,20 @@ sub disable_contracts_matching {
     map { $_->disable } $self->find_contracts_matching(@_);
 }
 
+sub find_contract {
+    my ($self, $contractor) = @_;
+
+    croak "method find_contract() expects a fully qualified function name as argument"
+	if ( scalar @_ != 2 ||
+	     !defined $contractor ||
+	     ref $contractor ne '' ||
+	     $contractor !~ /::/
+	);
+
+    my $index = $self->_contract_index;
+    return $index->{$contractor};
+}
+
 sub find_contracts_matching {
     my $self = shift;
     my $match = shift;
@@ -192,6 +206,24 @@ Return all contracts registered in the pool.
 Return true if the subroutine identified by C<$fully_qualified_name>
 has a contract.
 
+=item C<< $pool->find_contract($fully_qualified_name) >>
+
+Return the contract of the subroutine identified by C<$fully_qualified_name>
+or C<undef> if this subroutine does not exist or has no contract. Example:
+
+    my $c = get_contract_pool->find_contract("Foo::Bar::yaph") ||
+        die "couldn't find contract";
+    $c->clear_cache;    
+
+=item C<< $pool->find_contracts_matching($regexp) >>
+
+Find all the contracts registered in the pool and whose contractor's
+fully qualified names matches the pattern C</^$regexp$/>. Example:
+
+    foreach my $c (get_contract_pool->find_contract("Foo::Bar::*")) {
+        $c->clear_cache;
+    }
+
 =item C<< $pool->enable_all_contracts >>
 
 Enable all the contracts registered in the pool.
@@ -210,11 +242,6 @@ fully qualified names matches the pattern C</^$regexp$/>.
 Disable all the contracts registered in the pool whose contractor's
 fully qualified names matches the pattern C</^$regexp$/>.
 
-=item C<< $pool->find_contracts_matching($regexp) >>
-
-Find all the contracts registered in the pool and whose contractor's
-fully qualified names matches the pattern C</^$regexp$/>.
-
 =back
 
 =head1 SEE ALSO
@@ -223,7 +250,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Pool.pm,v 1.13 2009/06/03 04:40:12 erwan_lemonnier Exp $
+$Id: Pool.pm,v 1.14 2009/06/08 19:44:28 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

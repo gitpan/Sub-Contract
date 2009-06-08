@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 16_test_cache.t,v 1.6 2009/06/01 20:43:06 erwan_lemonnier Exp $
+#   $Id: 16_test_cache.t,v 1.7 2009/06/08 19:44:29 erwan_lemonnier Exp $
 #
 
 package main;
@@ -14,7 +14,7 @@ use Data::Dumper;
 BEGIN {
 
     use check_requirements;
-    plan tests => 51;
+    plan tests => 53;
 
     use_ok("Sub::Contract",'contract');
 };
@@ -140,5 +140,14 @@ is_deeply(\@res,["abc","123"],"second get, array context");
 
 my $res = bim();
 is($res,4,"third get, scalar context: yield new value");
+
+# test caching undef
+contract("returnsundef")->cache->enable;
+my $ret = undef;
+sub returnsundef { return $ret; }
+
+is(returnsundef(1,2), undef, "storing undef in cache");
+$ret = 1234;
+is(returnsundef(1,2), undef, "getting undef from cache");
 
 # TODO: fill cache heavily

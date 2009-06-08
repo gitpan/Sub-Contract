@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Cache - Implement a subroutine's cache
 #
-#   $Id: Cache.pm,v 1.1 2009/06/03 18:53:35 erwan_lemonnier Exp $
+#   $Id: Cache.pm,v 1.2 2009/06/08 19:44:28 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Cache;
@@ -13,7 +13,7 @@ use Carp qw(croak confess);
 use Data::Dumper;
 use Symbol;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 # NOTE: to speed up things, we do very little sanity control of method
 # arguments, so that a key can for example be undefined though it
@@ -57,8 +57,8 @@ sub has {
 sub set {
     my ($self,$key,$value) = @_;
 
-    croak "BUG: undefined key or/and value".Dumper($key,$value)
-	if (!defined $key || !defined $value);
+    croak "BUG: undefined cache key".Dumper($key,$value)
+	if (!defined $key);
 
     if ($self->{cache_size} >= $self->{cache_max_size}) {
 	$self->clear;
@@ -135,7 +135,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Cache.pm,v 1.1 2009/06/03 18:53:35 erwan_lemonnier Exp $
+$Id: Cache.pm,v 1.2 2009/06/08 19:44:28 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 
