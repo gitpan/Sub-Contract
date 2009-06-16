@@ -54,3 +54,8 @@ Revision history for Perl extension Sub::Contract
         - bugfix: refused to cache undef results
         - pod++
         - added find_contract to Sub::Contract::Pool
+
+0.12  2009-06-16
+        - cache statistics now shows how often cache gets emptied
+        - pod example of cache statistics
+        - test the cache report

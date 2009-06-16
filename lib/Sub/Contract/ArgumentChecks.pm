@@ -1,7 +1,7 @@
 #
 #   Sub::Contract::ArgumentChecks - Conditions on input/return arguments
 #
-#   $Id: ArgumentChecks.pm,v 1.7 2009/06/03 04:40:12 erwan_lemonnier Exp $
+#   $Id: ArgumentChecks.pm,v 1.8 2009/06/16 12:23:58 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::ArgumentChecks;
@@ -16,7 +16,7 @@ use accessors ('type',         # 'in' or 'out'
 	       'hash_checks',  # an anonymous hash of checks on hash-style passed arguments
 	       );
 
-our $VERSION = '0.10';
+our $VERSION = '0.12';
 
 #---------------------------------------------------------------
 #
@@ -115,7 +115,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: ArgumentChecks.pm,v 1.7 2009/06/03 04:40:12 erwan_lemonnier Exp $
+$Id: ArgumentChecks.pm,v 1.8 2009/06/16 12:23:58 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

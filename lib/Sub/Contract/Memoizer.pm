@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Memoizer - Implement the memoizing behaviour of a contract
 #
-#   $Id: Memoizer.pm,v 1.11 2009/06/08 19:44:28 erwan_lemonnier Exp $
+#   $Id: Memoizer.pm,v 1.12 2009/06/16 12:23:58 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Memoizer;
@@ -14,7 +14,7 @@ use Data::Dumper;
 use Symbol;
 use Sub::Contract::Cache;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 #---------------------------------------------------------------
 #
@@ -47,22 +47,60 @@ sub _incr_hit {
     $CACHE_STATS{$_[0]}->{hits}++;
 }
 
+sub _incr_max_reached {
+    # we don't want to increase this counter from within Sub::Contract::Cache->set for
+    # efficiency reasons, so we check after a set if the cache only contains 1 entry.
+    # if so, either it is the first entry (and then it happens only once and we count
+    # it away by setting maxsize to -1 at start) or the cache just got cleared
+
+    if ($CACHE_STATS{$_[0]}->{cache}->{cache_size} == 1) {
+	$CACHE_STATS{$_[0]}->{maxsize}++;
+    }
+}
+
+sub _get_cache_stats_report {
+    my $report = "";
+    my ($cntfnc,$cnthit,$cntqry,$cntclr) = (0,0,0,0);
+	
+    # find out max lentgh of functions fully qualified names
+    my $length = 0;
+    foreach my $func (sort keys %CACHE_STATS) {
+	$length = length $func if (length $func > $length);
+    }
+
+    $report .= "------------------------------------------------------\n";
+    $report .= "Statistics from Sub::Contract's function result cache:\n";
+    $report .= "\n";
+    
+    foreach my $func (sort keys %CACHE_STATS) {
+	my $hits = $CACHE_STATS{$func}->{hits};
+	my $calls = $CACHE_STATS{$func}->{calls};
+	my $max = $CACHE_STATS{$func}->{maxsize};
+	$max = 0 if ($max == -1); # see _incr_max_reached for explanation
+	$cntfnc++;
+	$cnthit += $hits;
+	$cntqry += $calls;
+	$cntclr += $max;
+	if ($calls) {
+	    my $rate = int(1000*$hits/$calls)/10;
+	    $report .= "  ".sprintf("%-".$length."s :",$func)."  $rate % hits (calls: $calls, hits: $hits, max size reached: $max)\n";
+	}
+    }
+
+    $report .= "\n";
+    $report .= "  number of caches: $cntfnc\n";
+    $report .= "  total calls: $cntqry\n";
+    $report .= "  total hits: $cnthit\n";
+    $report .= "  total max size reached: $cntclr\n";
+    $report .= "\n";
+    $report .= "------------------------------------------------------\n";
+
+    return $report;
+}
 
 # show cache statistics, if any
 END {
-    if ($CACHE_STATS_ON) {
-	print "------------------------------------------------------\n";
-	print "Statistics from Sub::Contract's function result cache:\n";
-	foreach my $func (sort keys %CACHE_STATS) {
-	    my $hits = $CACHE_STATS{$func}->{hits};
-	    my $calls = $CACHE_STATS{$func}->{calls};
-	    if ($calls) {
-		my $rate = int(1000*$hits/$calls)/10;
-		print "  ".sprintf("%-60s:",$func)."  $rate % hits (calls: $calls, hits: $hits)\n";
-	    }
-	}
-	print "------------------------------------------------------\n";
-    }
+    print _get_cache_stats_report if ($CACHE_STATS_ON);
 }
 
 #---------------------------------------------------------------
@@ -85,7 +123,7 @@ sub cache {
 					       size => $size );
 
     if ($CACHE_STATS_ON && !exists $CACHE_STATS{$self->contractor}) {
-	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0 };
+	$CACHE_STATS{$self->contractor} = { calls => 0, hits => 0, maxsize => -1, cache => $self->{cache} };
     }
 
     return $self;
@@ -167,7 +205,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Memoizer.pm,v 1.11 2009/06/08 19:44:28 erwan_lemonnier Exp $
+$Id: Memoizer.pm,v 1.12 2009/06/16 12:23:58 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 

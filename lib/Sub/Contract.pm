@@ -2,7 +2,7 @@
 #
 #   Sub::Contract - Programming by contract and memoizing in one
 #
-#   $Id: Contract.pm,v 1.34 2009/06/08 19:44:28 erwan_lemonnier Exp $
+#   $Id: Contract.pm,v 1.35 2009/06/16 12:23:57 erwan_lemonnier Exp $
 #
 
 package Sub::Contract;
@@ -33,7 +33,7 @@ our @EXPORT_OK = qw( contract
 		     is_a
 		     );
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 my $pool = Sub::Contract::Pool::get_contract_pool();
 
@@ -659,7 +659,7 @@ constraining.
 
 =back
 
-=head1 OBJECT API
+=head1 Contract API
 
 =over 4
 
@@ -697,6 +697,19 @@ new() >> to create a contract:
 
 Same as above, excepts that the contractor is the function C<$name>
 located in package C<$package>.
+
+=item C<< contract($qualified_name) >>
+
+Syntax sugar: same as C<new Sub::Contract($qualified_name)>.
+Must be explicitly imported:
+
+    use Sub::Contract qw(contract);
+
+    contract('add_integers')
+        ->in(\&is_integer, \&is_integer)
+        ->enable;
+
+    sub add_integers {...}
 
 =item C<< $contract->invariant($coderef) >>
 
@@ -932,7 +945,7 @@ runtime.
 
 =back
 
-=head1 MEMOIZING
+=head1 Memoizing
 
 Contract objects provide implement memoization with the following
 methods:
@@ -969,30 +982,17 @@ contractor is not memoized.  Return the contract.
 
 =back
 
-=head1 CLASS API
+=head1 Constraint Library
 
-=over 4
+When working with Sub::Contract you end up having to build your own
+constraint library implementing constraints that identify the variable
+types specific to your software. Through Sub::Contract does not
+provide any default constraint library of its own (on purpose), it
+provides a number of usefull functions to combine existing constraints
+into more powerful ones, as shown in the example below:
 
-=item C<< contract($qualified_name) >>
-
-Same as C<new Sub::Contract($qualified_name)>.
-Must be explicitly imported:
-
-    use Sub::Contract qw(contract);
-
-    contract('add_integers')
-        ->in(\&is_integer, \&is_integer)
-        ->enable;
-
-    sub add_integers {...}
-
-=back
-
-The following exported functions help you building powerfull
-constraints by combining simpler constraints in a functional
-programming fashion. Below is a example of a complex contract built by
-combining simpler tests such as C<is_integer>:
-
+    # build complex constraints out of the constraints 'is_integer' 
+    # and 'is_a':
     contract("foobar")
         ->in( a => is_undefined_or(is_one_of(\&is_integer,\&is_a("Math::BigInt"))),
               b => is_defined_and(\is_a("Duck")) )
@@ -1084,7 +1084,7 @@ Example:
 
 =back
 
-=head1 CLASS VARIABLES
+=head1 Class Variables
 
 The value of the following variables is set by Sub::Contract before
 executing any contract validation code. They are designed to be used
@@ -1131,16 +1131,39 @@ C<< 'happy' >> if it gets some:
 	     }
         )->enable;
 
-=head1 CACHE PROFILER
+=head1 Cache Profiler
 
 To turn on the cache profiler, just set the environment variable
 PERL5SUBCONTRACTSTATS to 1:
 
     export PERL5SUBCONTRACTSTATS=1
 
-When the program stops, Sub::Contract will then print a text report to
-STDOUT showing the cache hit ratio for every memoized subroutine in
-the program.
+When the program stops, Sub::Contract will then print to stdout a text
+report looking like:
+
+    ------------------------------------------------------    
+    Statistics from Sub::Contract's function result cache:
+
+      main::bim          :  33.3 % hits (calls: 30, hits: 10, max size reached: 0)
+      Foo::Array::abc    :  75 % hits (calls: 16000, hits: 12000, max size reached: 1)
+      Foo::Scalar::doc   :  76.9 % hits (calls: 26, hits: 20, max size reached: 0)
+
+      number of caches: 3
+      total calls: 16056
+      total hits: 12030
+      total max size reached: 1
+
+    ------------------------------------------------------
+
+For each cache, C<calls> is the number of time the cache was queried
+for an entry, C<hits> is the number of time the cache did contain the
+entry, and C<max size reached> gives the number of time the maximum
+number of entries allowed in the cache was reached hence triggering
+the cache to be completely cleared.
+
+Caches that have a high C<max size reached> count should probably get
+their size increased. Caches that get a very low hit count should
+probably be removed.
 
 =head1 SEE ALSO
 
@@ -1160,7 +1183,7 @@ Please submit bugs to rt.cpan.org.
 
 =head1 VERSION
 
-$Id: Contract.pm,v 1.34 2009/06/08 19:44:28 erwan_lemonnier Exp $
+$Id: Contract.pm,v 1.35 2009/06/16 12:23:57 erwan_lemonnier Exp $
 
 =head1 AUTHORS
 

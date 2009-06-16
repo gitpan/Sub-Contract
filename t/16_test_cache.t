@@ -1,6 +1,6 @@
 #-------------------------------------------------------------------
 #
-#   $Id: 16_test_cache.t,v 1.7 2009/06/08 19:44:29 erwan_lemonnier Exp $
+#   $Id: 16_test_cache.t,v 1.8 2009/06/16 12:23:58 erwan_lemonnier Exp $
 #
 
 package main;
@@ -13,10 +13,13 @@ use Data::Dumper;
 
 BEGIN {
 
+    $ENV{PERL5SUBCONTRACTSTATS} = 1;
+
     use check_requirements;
-    plan tests => 53;
+    plan tests => 64;
 
     use_ok("Sub::Contract",'contract');
+    use_ok("Sub::Contract::Memoizer");
 };
 
 my @results;
@@ -150,4 +153,34 @@ is(returnsundef(1,2), undef, "storing undef in cache");
 $ret = 1234;
 is(returnsundef(1,2), undef, "getting undef from cache");
 
-# TODO: fill cache heavily
+# test hitting cache max size
+contract("hitmehard")->cache(size => 10)->enable;
+sub hitmehard { return $ret; }
+
+$ret = 42;
+# fill cache
+for (my $i=1; $i<=10; $i++) {
+    my $r = hitmehard($i);
+}
+$ret = 24;
+is(hitmehard(1),42,"cache not cleared yet");
+
+# double check
+ok(Sub::Contract::Memoizer::_get_cache_stats_report =~ /total max size reached: 0/mg, "stats report agrees");
+
+# clear cache by hitting max limit
+{   my $r = hitmehard(11); }
+
+is(hitmehard(1),24,"cache cleared upon hitting max size");
+
+# double check
+ok(Sub::Contract::Memoizer::_get_cache_stats_report =~ /total max size reached: 1/mg, "stats report agrees");
+
+# test the stats report
+my $report = Sub::Contract::Memoizer::_get_cache_stats_report;
+ok($report =~ /main::bim\s+:\s+33\.3 \% hits .calls: 3, hits: 1/mg, "stats report ok for main::bim");
+ok($report =~ /main::foo_scalar\s+:\s+76\.9 \% hits .calls: 26, hits: 20/mg, "stats report ok for main::foo_cache");
+ok($report =~ /number of caches: 7/mg, "stats report ok for number of cache");
+ok($report =~ /total calls: 63/mg, "stats report ok for total calls");
+ok($report =~ /total hits: 36/mg, "stats report ok for total hits");
+ok($report =~ /total max size reached: 1/mg, "stats report ok for total max size reached");

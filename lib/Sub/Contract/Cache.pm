@@ -2,7 +2,7 @@
 #
 #   Sub::Contract::Cache - Implement a subroutine's cache
 #
-#   $Id: Cache.pm,v 1.2 2009/06/08 19:44:28 erwan_lemonnier Exp $
+#   $Id: Cache.pm,v 1.3 2009/06/16 12:23:58 erwan_lemonnier Exp $
 #
 
 package Sub::Contract::Cache;
@@ -13,7 +13,7 @@ use Carp qw(croak confess);
 use Data::Dumper;
 use Symbol;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 # NOTE: to speed up things, we do very little sanity control of method
 # arguments, so that a key can for example be undefined though it
@@ -135,7 +135,7 @@ See 'Sub::Contract'.
 
 =head1 VERSION
 
-$Id: Cache.pm,v 1.2 2009/06/08 19:44:28 erwan_lemonnier Exp $
+$Id: Cache.pm,v 1.3 2009/06/16 12:23:58 erwan_lemonnier Exp $
 
 =head1 AUTHOR
 
